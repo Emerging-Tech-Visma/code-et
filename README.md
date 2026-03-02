@@ -31,20 +31,25 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   +---------------------------+
               |
   3. IMPLEMENT
-  +---------------------------+
-  | /code:implement           |  <-- code-et plugin
-  |                           |
-  |   Orchestrator (bg)       |
-  |   +-- Implementer 1 (wt) |
-  |   +-- Implementer 2 (wt) |
-  |   +-- Implementer N (wt) |
-  |                           |
-  |   Each implementer:       |
-  |   - Hard verification     |
-  |   - Auto-commit on pass   |
-  |                           |
-  |   /simplify (auto, end)   |  <-- Official plugin
-  +---------------------------+
+  +-----------------------------------+
+  | /code:implement                   |  <-- code-et plugin
+  |                                   |
+  | Subagent mode (default):          |
+  |   Orchestrator (bg)               |
+  |   +-- Implementer 1 (wt)         |
+  |   +-- Implementer 2 (wt)         |
+  |   +-- Implementer N (wt)         |
+  |                                   |
+  | Team mode (--team):               |
+  |   Lead → Teammate 1..N            |
+  |   Each claims + implements tasks  |
+  |                                   |
+  |   Each implementer/teammate:      |
+  |   - Hard verification             |
+  |   - Auto-commit on pass           |
+  |                                   |
+  |   /simplify (auto, end)           |  <-- Official plugin
+  +-----------------------------------+
               |
   4. PR
   +---------------------------+
@@ -135,13 +140,13 @@ claude plugin install coding-plugin --marketplace code-et
 
 ### code-et plugin
 
-| Skill             | Description                                                                                                                   |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `/code:setup`     | Detects project stack and generates `.claude/settings.json` with permissions                                                  |
-| `/code:implement` | Picks up native tasks, spawns orchestrator + parallel implementers in worktrees. Each runs verification, auto-commits on pass |
-| `/code:pr`        | Creates GitHub PR with auto-generated description from branch commits                                                         |
-| `/code:cleanup`   | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                      |
-| `/code:bun-init`  | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                           |
+| Skill             | Description                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/code:setup`     | Detects project stack and generates `.claude/settings.json` with permissions                                                                                    |
+| `/code:implement` | Picks up native tasks. Subagent mode (default): orchestrator + parallel implementers in worktrees. Team mode (`--team`): Agent Swarm with distributed teammates |
+| `/code:pr`        | Creates GitHub PR with auto-generated description from branch commits                                                                                           |
+| `/code:cleanup`   | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                                                        |
+| `/code:bun-init`  | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                                                             |
 
 ### Official plugins
 
@@ -191,6 +196,37 @@ claude
 ```
 
 This auto-detects the stack and configures `.claude/settings.json` permissions.
+
+## Configuration
+
+### Execution Modes
+
+`/code:implement` supports two modes:
+
+| Mode                | Trigger             | Flow                                    |
+| ------------------- | ------------------- | --------------------------------------- |
+| Subagent (default)  | Auto or `--no-team` | implement → orchestrator → implementers |
+| Team (experimental) | Auto or `--team`    | implement = lead → teammates            |
+
+Auto-detection: team mode activates when 4+ tasks exist with 60%+ having no blockers.
+
+### Environment Variables
+
+| Variable                               | Where                          | Purpose                              |
+| -------------------------------------- | ------------------------------ | ------------------------------------ |
+| `CLAUDE_CODE_TASK_LIST_ID`             | `.claude/settings.json`        | Scoped task list name                |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`      | `.claude-plugin/settings.json` | Auto-compact threshold (default: 70) |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `.claude/settings.json`        | Set to `1` to enable Agent Swarm     |
+
+To enable team mode, add to `.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
+```
 
 ## Recommended Hooks
 

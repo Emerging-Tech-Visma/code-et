@@ -21,6 +21,10 @@ Team project — Bun + Next.js with Claude Code plugin workflow.
 | Commit + PR     | `/commit-push-pr`                        |
 | Review PR       | `/code-review`                           |
 
+## Workflow Rules
+
+- **After Plan Mode:** Create tasks only. Do NOT start implementing. Tell the user to run `/code:implement` when ready.
+
 ## Task Metadata Convention
 
 Tasks created with `TaskCreate` should include metadata for `/code:implement` compatibility:
