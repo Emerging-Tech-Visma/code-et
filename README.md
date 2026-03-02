@@ -32,7 +32,7 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
               |
   3. IMPLEMENT
   +---------------------------+
-  | /code:implement           |  <-- Innovation Basement
+  | /code:implement           |  <-- code-et plugin
   |                           |
   |   Orchestrator (bg)       |
   |   +-- Implementer 1 (wt) |
@@ -87,7 +87,7 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | - code-simplifier  (/simplify)               |
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
-  | Innovation Basement (execution engine)       |
+  | code-et plugin (execution engine)             |
   | - /code:implement  (orchestrator+subagents)  |
   |   No issue refs — pure task-based            |
   | - /code:setup      (stack detection)         |
@@ -118,14 +118,16 @@ bun dev
 claude plugin install commit-commands --marketplace claude-plugins-official
 claude plugin install code-review --marketplace claude-plugins-official
 claude plugin install typescript-lsp --marketplace claude-plugins-official
+claude plugin install rust-analyzer-lsp --marketplace claude-plugins-official
+claude plugin install pyright-lsp --marketplace claude-plugins-official
 claude plugin install frontend-design --marketplace claude-plugins-official
 ```
 
 **code-et plugin** (custom marketplace — add first, then install):
 
 ```bash
-claude marketplace add NOGIT007/innovation-basement
-claude plugin install coding-plugin --marketplace innovation-basement
+claude marketplace add NOGIT007/code-et
+claude plugin install coding-plugin --marketplace code-et
 ```
 
 ## Project Setup
