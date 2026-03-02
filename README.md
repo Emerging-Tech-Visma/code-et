@@ -101,6 +101,186 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   +----------------------------------------------+
 ```
 
+## Building a Plugin from Scratch
+
+This section documents how the code-et plugin was built — use it as a guide for creating your own Claude Code marketplace plugin.
+
+### Step 1: Repository Structure
+
+A marketplace repo has two levels:
+
+- **Root** `.claude-plugin/marketplace.json` — declares which plugins exist and where to find them
+- **Subdirectory** (e.g. `coding-plugin/`) — contains the actual plugin with its own `.claude-plugin/plugin.json`
+
+```
+my-repo/                              ← GitHub repo root
+├── .claude-plugin/
+│   └── marketplace.json              ← marketplace manifest (points to subdirs)
+├── coding-plugin/                    ← plugin subdirectory
+│   ├── .claude-plugin/
+│   │   ├── plugin.json               ← plugin identity (name, version)
+│   │   └── settings.json             ← permissions, env vars, spinner tips
+│   ├── CLAUDE.md                     ← instructions loaded when plugin is active
+│   ├── agents/                       ← subagent definitions
+│   │   ├── orchestrator.md
+│   │   └── implementer.md
+│   ├── commands/                     ← slash commands (skills)
+│   │   ├── implement.md
+│   │   ├── setup.md
+│   │   └── cleanup.md
+│   ├── hooks/
+│   │   └── hooks.json                ← lifecycle hooks
+│   └── scripts/                      ← shell scripts invoked by hooks
+│       ├── verify-gate.sh
+│       └── run-tests.sh
+├── README.md                         ← repo docs (not part of plugin)
+└── package.json                      ← repo-level config (not part of plugin)
+```
+
+> **Key rule:** `marketplace.json` uses `"source": "./coding-plugin"` — the source must point to a subdirectory, never `"."`.
+
+### Step 2: Create the Directory Structure
+
+```bash
+# From your repo root
+mkdir -p coding-plugin/.claude-plugin
+mkdir -p coding-plugin/{agents,commands,hooks,scripts}
+mkdir -p .claude-plugin
+```
+
+### Step 3: Marketplace Manifest
+
+Create `.claude-plugin/marketplace.json` at the **repo root**:
+
+```json
+{
+  "name": "code-et",
+  "owner": {
+    "name": "Your Name"
+  },
+  "metadata": {
+    "description": "Task-driven coding workflow with parallel agents in worktrees",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "code",
+      "source": "./coding-plugin",
+      "description": "Task-driven coding workflow with native Task tools."
+    }
+  ]
+}
+```
+
+- `name` — marketplace name (matches the repo)
+- `plugins[].name` — becomes the skill prefix (`/code:*`)
+- `plugins[].source` — relative path to the plugin subdirectory
+
+### Step 4: Plugin Identity
+
+Create `coding-plugin/.claude-plugin/plugin.json`:
+
+```json
+{
+  "name": "code",
+  "version": "1.0.0",
+  "description": "Task-driven coding workflow with native Task tools.",
+  "author": {
+    "name": "Your Name"
+  },
+  "license": "MIT",
+  "keywords": ["coding", "workflow", "agents"]
+}
+```
+
+The `name` field here **must match** the `plugins[].name` in `marketplace.json`. This determines the skill prefix — `"code"` means `/code:implement`, `/code:setup`, etc.
+
+### Step 5: Plugin Settings
+
+Create `coding-plugin/.claude-plugin/settings.json`:
+
+```json
+{
+  "plansDirectory": "plans",
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+  },
+  "permissions": {
+    "allow": ["Bash(git:*)", "Bash(gh:*)", "Bash"]
+  }
+}
+```
+
+### Step 6: Add Commands (Skills)
+
+Each `.md` file in `coding-plugin/commands/` becomes a skill callable as `/code:<filename>`.
+
+| File           | Skill             |
+| -------------- | ----------------- |
+| `implement.md` | `/code:implement` |
+| `setup.md`     | `/code:setup`     |
+| `cleanup.md`   | `/code:cleanup`   |
+| `pr.md`        | `/code:pr`        |
+| `bun-init.md`  | `/code:bun-init`  |
+
+Commands are markdown files with instructions that Claude follows when the skill is invoked.
+
+### Step 7: Add Agents
+
+Each `.md` file in `coding-plugin/agents/` becomes a subagent type callable as `code:<filename>`.
+
+| File              | Subagent type       |
+| ----------------- | ------------------- |
+| `orchestrator.md` | `code:orchestrator` |
+| `implementer.md`  | `code:implementer`  |
+
+Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"`.
+
+### Step 8: Add Hooks and Scripts
+
+`coding-plugin/hooks/hooks.json` defines lifecycle hooks. Scripts go in `coding-plugin/scripts/` and are referenced via `${CLAUDE_PLUGIN_ROOT}/scripts/`:
+
+```json
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "code:implementer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/verify-gate.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Step 9: Add Plugin CLAUDE.md
+
+`coding-plugin/CLAUDE.md` contains instructions loaded when the plugin is active. This is where you document workflow rules, conventions, and project standards.
+
+### Step 10: Publish and Install
+
+```bash
+# Push to GitHub
+git add -A && git commit -m "Add plugin" && git push
+
+# In Claude Code — add marketplace and install
+/plugin marketplace add YourOrg/your-repo
+/plugin install code@code-et
+```
+
+After installation, all commands appear as skills (e.g. `/code:implement`), agents are available as subagent types, and hooks run automatically.
+
+To update after pushing changes:
+
+```
+/plugin  →  Marketplaces  →  code-et  →  Update
+```
+
 ## Prerequisites
 
 - **Claude Code** — `npm install -g @anthropic-ai/claude-code`
@@ -133,7 +313,7 @@ bun dev
 
 ```
 /plugin marketplace add Emerging-Tech-Visma/code-et
-/plugin install coding-plugin@code-et
+/plugin install code@code-et
 ```
 
 ## Skills Reference
