@@ -132,7 +132,7 @@ claude plugin install frontend-design --marketplace claude-plugins-official
 **code-et plugin** (custom marketplace — add first, then install):
 
 ```bash
-claude marketplace add NOGIT007/code-et
+claude marketplace add Emerging-Tech-Visma/code-et
 claude plugin install coding-plugin --marketplace code-et
 ```
 
