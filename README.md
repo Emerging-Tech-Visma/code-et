@@ -262,20 +262,35 @@ Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"
 
 `coding-plugin/CLAUDE.md` contains instructions loaded when the plugin is active. This is where you document workflow rules, conventions, and project standards.
 
-### Step 10: Publish and Install
+### Step 10: Publish
 
-```bash
-# In Claude Code — commit, push branch, and create PR
-/commit-push-pr
+Commit your plugin files, push to a branch, and create a PR. After merging to main, the marketplace is live.
 
-# After PR is merged — add marketplace and install
-/plugin marketplace add YourOrg/your-repo
+## How to Install the code-et Plugin
+
+Open Claude Code and run:
+
+```
+/plugin marketplace add Emerging-Tech-Visma/code-et
+```
+
+Then install the plugin:
+
+```
 /plugin install code@code-et
 ```
 
-After installation, all commands appear as skills (e.g. `/code:implement`), agents are available as subagent types, and hooks run automatically.
+> If SSH fails, use the HTTPS workaround: `/plugin` → Marketplaces → Add → paste `Emerging-Tech-Visma/code-et`
 
-To update after pushing changes:
+After installation, these skills are available:
+
+- `/code:implement` — orchestrator + parallel implementers in worktrees
+- `/code:setup` — detect stack, generate settings
+- `/code:pr` — create GitHub PR
+- `/code:cleanup` — refactor CLAUDE.md
+- `/code:bun-init` — scaffold Bun + Next.js project
+
+To update after new commits are pushed:
 
 ```
 /plugin  →  Marketplaces  →  code-et  →  Update
