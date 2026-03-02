@@ -2,7 +2,7 @@
 context: fork
 allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskList, TaskGet, TaskUpdate
 description: Start implementation from pending tasks
-argument-hint: [--team | --no-team]
+argument-hint: [--team]
 ---
 
 # Implement from Tasks
@@ -20,18 +20,8 @@ If no tasks found → error: "No pending tasks found. Create tasks first using T
 
 Parse `$ARGUMENTS`:
 
-- `--team` → force team mode (Step 3b)
-- `--no-team` → force subagent mode (Step 3a)
-- No flag → auto-detect (see below)
-
-### Auto-detection
-
-Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `.claude/settings.json` env.
-
-1. Count total pending tasks
-2. Count independent tasks (no `blockedBy` or all blockers completed)
-3. If total >= 4 AND independence ratio >= 0.6 → team mode (Step 3b)
-4. Otherwise → subagent mode (Step 3a)
+- `--team` → team mode (Step 3b)
+- No flag → subagent mode (Step 3a)
 
 If `--team` is passed but `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is not set → error:
 "Team mode requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in .claude/settings.json env."

@@ -33,12 +33,6 @@ For each contradiction: `AskUserQuestion` with options [Keep first, Keep second,
 | API        | `.claude/rules/api.md`        |
 | Delete     | (removed)                     |
 
-**Protected sections** — these MUST stay in root CLAUDE.md and never be moved to rules/:
-
-- **Workflow Rules** (Plan → Tasks → STOP → Implement flow)
-- **Plugin Usage** table
-- **Task Metadata Convention**
-
 ## Step 4: Flag Items for Deletion
 
 Identify redundant, stale, or obvious items. For each: `AskUserQuestion` with options [Delete, Keep in root, Move to rules].
@@ -53,7 +47,7 @@ Each rule file: `# [Category] Rules` → `_Loaded when working on [category] fil
 
 ## Step 6: Write Minimal Root CLAUDE.md
 
-Target: **Under 50 lines.** Must include: project name (1-2 lines), architecture (5-10 lines), critical rules (10-15 lines), Workflow Rules section (Plan → Tasks → STOP → Implement), Plugin Usage table, reference to `.claude/rules/`.
+Target: **Under 50 lines.** Must include: project name (1-2 lines), architecture (5-10 lines), critical rules (10-15 lines), Plugin Usage table, reference to `.claude/rules/`.
 
 ## Step 7: Organize Auto-Memory
 
