@@ -9,7 +9,7 @@
   },
   "plugins": [
     {
-      "name": "coding-plugin",
+      "name": "code",
       "source": "./coding-plugin",
       "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view)."
     }

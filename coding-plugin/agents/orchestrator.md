@@ -29,7 +29,7 @@ LOOP until all tasks completed:
       TaskUpdate(task.id, status: "in_progress", owner: "orchestrator")
 
       agent_id = Task(
-        subagent_type: "coding-plugin:implementer",
+        subagent_type: "code:implementer",
         run_in_background: true,  # NON-BLOCKING
         prompt: """
         Task ID: <id>

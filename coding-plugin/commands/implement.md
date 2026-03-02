@@ -30,7 +30,7 @@ If `--team` is passed but `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is not set → 
 
 ```
 Task(
-  subagent_type: "coding-plugin:orchestrator",
+  subagent_type: "code:orchestrator",
   prompt: """
   Execute all pending tasks.
   Use TaskList to find all pending tasks.
