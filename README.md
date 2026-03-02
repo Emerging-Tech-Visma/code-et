@@ -120,20 +120,20 @@ bun dev
 
 **Official plugins (Claude Code):**
 
-```bash
-claude plugin install commit-commands --marketplace claude-plugins-official
-claude plugin install code-review --marketplace claude-plugins-official
-claude plugin install typescript-lsp --marketplace claude-plugins-official
-claude plugin install rust-analyzer-lsp --marketplace claude-plugins-official
-claude plugin install pyright-lsp --marketplace claude-plugins-official
-claude plugin install frontend-design --marketplace claude-plugins-official
+```
+/plugin install commit-commands@claude-plugins-official
+/plugin install code-review@claude-plugins-official
+/plugin install typescript-lsp@claude-plugins-official
+/plugin install rust-analyzer-lsp@claude-plugins-official
+/plugin install pyright-lsp@claude-plugins-official
+/plugin install frontend-design@claude-plugins-official
 ```
 
 **code-et plugin** (custom marketplace — add first, then install):
 
-```bash
-claude marketplace add Emerging-Tech-Visma/code-et
-claude plugin install coding-plugin --marketplace code-et
+```
+/plugin marketplace add Emerging-Tech-Visma/code-et
+/plugin install coding-plugin@Emerging-Tech-Visma-code-et
 ```
 
 ## Skills Reference
@@ -159,32 +159,6 @@ claude plugin install coding-plugin --marketplace code-et
 | `/frontend-design` | frontend-design | Creates distinctive, production-grade UI components with bold design direction. Avoids generic AI aesthetics                                                    |
 | `/simplify`        | code-review     | Reviews changed code for reuse, quality, and efficiency, then fixes issues found                                                                                |
 
-### Typical workflow
-
-```
-1. /clean_gone
-   → Clean up stale branches and worktrees from previous work
-
-2. Plan Mode (Shift+Tab)
-   → Explore codebase with LSP, design approach
-
-3. TaskCreate
-   → Create tasks with metadata.verification and metadata.files
-   → Set blockedBy dependencies
-
-4. Exit plan mode (approve)
-
-5. /code:implement
-   → Orchestrator spawns implementers in worktrees
-   → Each runs tests, auto-commits on pass
-
-6. /commit-push-pr
-   → Commits remaining changes, pushes, opens PR
-
-7. /code-review
-   → Colleague reviews with multi-agent analysis
-```
-
 ## Project Setup
 
 After plugins are installed, run inside the project:
@@ -201,14 +175,7 @@ This auto-detects the stack and configures `.claude/settings.json` permissions.
 
 ### Execution Modes
 
-`/code:implement` supports two modes:
-
-| Mode                | Trigger             | Flow                                    |
-| ------------------- | ------------------- | --------------------------------------- |
-| Subagent (default)  | Auto or `--no-team` | implement → orchestrator → implementers |
-| Team (experimental) | Auto or `--team`    | implement = lead → teammates            |
-
-Auto-detection: team mode activates when 4+ tasks exist with 60%+ having no blockers.
+`/code:implement` runs in subagent mode by default (orchestrator + parallel implementers in worktrees). Pass `--team` to use Agent Swarm team mode instead.
 
 ### Environment Variables
 
@@ -249,13 +216,3 @@ Auto-format on file writes with Prettier — add to `~/.claude/settings.json`:
   }
 }
 ```
-
-## Development
-
-1. **Clean** — Run `/clean_gone` to remove stale branches and worktrees
-2. **Plan** — Use Plan Mode (Shift+Tab) to explore and design
-3. **Tasks** — Create tasks with `TaskCreate` including metadata
-4. **Implement** — Run `/code:implement` to execute tasks with subagents
-5. **PR** — Run `/commit-push-pr` to commit, push, and create PR
-6. **Review** — Colleague runs `/code-review` on the PR
-7. **Merge + Pull** — Merge on GitHub, `git pull origin main`
