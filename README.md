@@ -87,11 +87,13 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | - code-simplifier  (/simplify)               |
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
-  | code-et plugin (execution engine)             |
+  | code-et plugin (execution engine)            |
   | - /code:implement  (orchestrator+subagents)  |
-  |   No issue refs — pure task-based            |
   | - /code:setup      (stack detection)         |
+  | - /code:commit     (conventional commits)    |
+  | - /code:pr         (GitHub PRs)              |
   | - /code:cleanup    (CLAUDE.md organization)  |
+  | - /code:bun-init   (project scaffolding)     |
   +----------------------------------------------+
 ```
 
@@ -128,6 +130,53 @@ claude plugin install frontend-design --marketplace claude-plugins-official
 ```bash
 claude marketplace add NOGIT007/code-et
 claude plugin install coding-plugin --marketplace code-et
+```
+
+## Skills Reference
+
+### code-et plugin
+
+| Skill             | Description                                                                                                                   |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `/code:setup`     | Detects project stack and generates `.claude/settings.json` with permissions                                                  |
+| `/code:implement` | Picks up native tasks, spawns orchestrator + parallel implementers in worktrees. Each runs verification, auto-commits on pass |
+| `/code:commit`    | Generates conventional commit message from staged changes                                                                     |
+| `/code:pr`        | Creates GitHub PR with auto-generated description from branch commits                                                         |
+| `/code:cleanup`   | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                      |
+| `/code:bun-init`  | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                           |
+
+### Official plugins
+
+| Skill              | Plugin          | Description                                                                                                                                                     |
+| ------------------ | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/commit`          | commit-commands | Creates a git commit with auto-generated message                                                                                                                |
+| `/commit-push-pr`  | commit-commands | Creates branch, commits, pushes, and opens a PR in one step                                                                                                     |
+| `/clean_gone`      | commit-commands | Removes local branches marked as `[gone]` (deleted on remote), including associated worktrees                                                                   |
+| `/code-review`     | code-review     | Multi-agent PR review — 5 parallel agents check CLAUDE.md compliance, bugs, git history, past PR comments, and code comments. Scores each finding by confidence |
+| `/frontend-design` | frontend-design | Creates distinctive, production-grade UI components with bold design direction. Avoids generic AI aesthetics                                                    |
+| `/simplify`        | code-review     | Reviews changed code for reuse, quality, and efficiency, then fixes issues found                                                                                |
+
+### Typical workflow
+
+```
+1. Plan Mode (Shift+Tab)
+   → Explore codebase with LSP, design approach
+
+2. TaskCreate
+   → Create tasks with metadata.verification and metadata.files
+   → Set blockedBy dependencies
+
+3. Exit plan mode (approve)
+
+4. /code:implement
+   → Orchestrator spawns implementers in worktrees
+   → Each runs tests, auto-commits on pass
+
+5. /commit-push-pr
+   → Commits remaining changes, pushes, opens PR
+
+6. /code-review
+   → Colleague reviews with multi-agent analysis
 ```
 
 ## Project Setup
