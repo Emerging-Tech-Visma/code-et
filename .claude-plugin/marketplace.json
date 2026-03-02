@@ -1,19 +1,17 @@
 {
-  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "code-et",
-  "description": "Task-driven coding workflow with parallel agents in worktrees",
   "owner": {
     "name": "Kennet Kusk"
+  },
+  "metadata": {
+    "description": "Task-driven coding workflow with parallel agents in worktrees",
+    "version": "1.0.0"
   },
   "plugins": [
     {
       "name": "coding-plugin",
-      "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view).",
-      "version": "1.0.0",
-      "author": {
-        "name": "Kennet Kusk"
-      },
-      "source": "."
+      "source": "./coding-plugin",
+      "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view)."
     }
   ]
 }
