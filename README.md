@@ -110,13 +110,13 @@ This section documents how the code-et plugin was built — use it as a guide fo
 A marketplace repo has two levels:
 
 - **Root** `.claude-plugin/marketplace.json` — declares which plugins exist and where to find them
-- **Subdirectory** (e.g. `coding-plugin/`) — contains the actual plugin with its own `.claude-plugin/plugin.json`
+- **Subdirectory** (e.g. `code-et-implementer/`) — contains the actual plugin with its own `.claude-plugin/plugin.json`
 
 ```
 my-repo/                              ← GitHub repo root
 ├── .claude-plugin/
 │   └── marketplace.json              ← marketplace manifest (points to subdirs)
-├── coding-plugin/                    ← plugin subdirectory
+├── code-et-implementer/                    ← plugin subdirectory
 │   ├── .claude-plugin/
 │   │   ├── plugin.json               ← plugin identity (name, version)
 │   │   └── settings.json             ← permissions, env vars, spinner tips
@@ -137,14 +137,14 @@ my-repo/                              ← GitHub repo root
 └── package.json                      ← repo-level config (not part of plugin)
 ```
 
-> **Key rule:** `marketplace.json` uses `"source": "./coding-plugin"` — the source must point to a subdirectory, never `"."`.
+> **Key rule:** `marketplace.json` uses `"source": "./code-et-implementer"` — the source must point to a subdirectory, never `"."`.
 
 ### Step 2: Create the Directory Structure
 
 ```bash
 # From your repo root
-mkdir -p coding-plugin/.claude-plugin
-mkdir -p coding-plugin/{agents,commands,hooks,scripts}
+mkdir -p code-et-implementer/.claude-plugin
+mkdir -p code-et-implementer/{agents,commands,hooks,scripts}
 mkdir -p .claude-plugin
 ```
 
@@ -165,7 +165,7 @@ Create `.claude-plugin/marketplace.json` at the **repo root**:
   "plugins": [
     {
       "name": "code",
-      "source": "./coding-plugin",
+      "source": "./code-et-implementer",
       "description": "Task-driven coding workflow with native Task tools."
     }
   ]
@@ -178,7 +178,7 @@ Create `.claude-plugin/marketplace.json` at the **repo root**:
 
 ### Step 4: Plugin Identity
 
-Create `coding-plugin/.claude-plugin/plugin.json`:
+Create `code-et-implementer/.claude-plugin/plugin.json`:
 
 ```json
 {
@@ -197,7 +197,7 @@ The `name` field here **must match** the `plugins[].name` in `marketplace.json`.
 
 ### Step 5: Plugin Settings
 
-Create `coding-plugin/.claude-plugin/settings.json`:
+Create `code-et-implementer/.claude-plugin/settings.json`:
 
 ```json
 {
@@ -213,7 +213,7 @@ Create `coding-plugin/.claude-plugin/settings.json`:
 
 ### Step 6: Add Commands (Skills)
 
-Each `.md` file in `coding-plugin/commands/` becomes a skill callable as `/code:<filename>`.
+Each `.md` file in `code-et-implementer/commands/` becomes a skill callable as `/code:<filename>`.
 
 | File           | Skill             |
 | -------------- | ----------------- |
@@ -227,7 +227,7 @@ Commands are markdown files with instructions that Claude follows when the skill
 
 ### Step 7: Add Agents
 
-Each `.md` file in `coding-plugin/agents/` becomes a subagent type callable as `code:<filename>`.
+Each `.md` file in `code-et-implementer/agents/` becomes a subagent type callable as `code:<filename>`.
 
 | File              | Subagent type       |
 | ----------------- | ------------------- |
@@ -238,7 +238,7 @@ Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"
 
 ### Step 8: Add Hooks and Scripts
 
-`coding-plugin/hooks/hooks.json` defines lifecycle hooks. Scripts go in `coding-plugin/scripts/` and are referenced via `${CLAUDE_PLUGIN_ROOT}/scripts/`:
+`code-et-implementer/hooks/hooks.json` defines lifecycle hooks. Scripts go in `code-et-implementer/scripts/` and are referenced via `${CLAUDE_PLUGIN_ROOT}/scripts/`:
 
 ```json
 {
@@ -260,7 +260,7 @@ Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"
 
 ### Step 9: Add Plugin CLAUDE.md
 
-`coding-plugin/CLAUDE.md` contains instructions loaded when the plugin is active. This is where you document workflow rules, conventions, and project standards.
+`code-et-implementer/CLAUDE.md` contains instructions loaded when the plugin is active. This is where you document workflow rules, conventions, and project standards.
 
 ### Step 10: Publish
 
