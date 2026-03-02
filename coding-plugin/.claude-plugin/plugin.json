@@ -1,5 +1,5 @@
 {
-  "name": "coding-plugin",
+  "name": "code",
   "version": "1.0.0",
   "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view).",
   "author": {
