@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bun:*)",
+      "Bash(bunx:*)",
+      "Bash(bun test:*)",
+      "Bash(bun run:*)",
+      "Bash(git:*)",
+      "Bash(gh:*)"
+    ],
+    "deny": ["Bash(rm -rf:*)"]
+  },
+  "env": {
+    "CLAUDE_CODE_TASK_LIST_ID": "code-et-tasks",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+  }
+}
