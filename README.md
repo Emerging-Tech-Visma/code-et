@@ -95,6 +95,12 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   +----------------------------------------------+
 ```
 
+## Prerequisites
+
+- **Claude Code** — `npm install -g @anthropic-ai/claude-code`
+- **Bun** — `curl -fsSL https://bun.sh/install | bash`
+- **GitHub CLI (`gh`)** — used by plugins for PRs, issues, and code review ([install](https://cli.github.com/))
+
 ## Getting Started
 
 ```bash
@@ -102,6 +108,58 @@ git clone https://github.com/Emerging-Tech-Visma/code-et.git
 cd code-et
 bun install
 bun dev
+```
+
+## Plugin Installation
+
+**Official plugins (Claude Code):**
+
+```bash
+claude plugin install commit-commands --marketplace claude-plugins-official
+claude plugin install code-review --marketplace claude-plugins-official
+claude plugin install typescript-lsp --marketplace claude-plugins-official
+claude plugin install frontend-design --marketplace claude-plugins-official
+```
+
+**code-et plugin** (custom marketplace — add first, then install):
+
+```bash
+claude marketplace add NOGIT007/innovation-basement
+claude plugin install coding-plugin --marketplace innovation-basement
+```
+
+## Project Setup
+
+After plugins are installed, run inside the project:
+
+```bash
+claude
+# then inside Claude Code:
+/code:setup
+```
+
+This auto-detects the stack and configures `.claude/settings.json` permissions.
+
+## Recommended Hooks
+
+Auto-format on file writes with Prettier — add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx prettier --write \"$CLAUDE_TOOL_INPUT_FILE_PATH\""
+          }
+        ]
+      }
+    ]
+  }
+}
 ```
 
 ## Development
