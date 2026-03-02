@@ -296,6 +296,23 @@ To update after new commits are pushed:
 /plugin  →  Marketplaces  →  code-et  →  Update
 ```
 
+## Clone & Install from GitHub
+
+Clone the repo and add it as a marketplace source:
+
+```bash
+git clone https://github.com/Emerging-Tech-Visma/code-et.git
+```
+
+Then in Claude Code:
+
+```
+/plugin marketplace add Emerging-Tech-Visma/code-et
+/plugin install code@code-et
+```
+
+After installation, verify skills are available by typing `/code:` — you should see implement, setup, cleanup, pr, and bun-init.
+
 ## Prerequisites
 
 - **Claude Code** — `npm install -g @anthropic-ai/claude-code`
