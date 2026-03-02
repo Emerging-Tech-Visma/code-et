@@ -1,0 +1,18 @@
+{
+  "plansDirectory": "plans",
+  "env": {
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+  },
+  "permissions": {
+    "allow": ["Bash(git:*)", "Bash(gh:*)", "Bash"]
+  },
+  "spinnerTipsOverride": [
+    "Press ctrl+t to view task progress",
+    "Orchestrator spawns up to 5 parallel implementers",
+    "Use --team for Agent Swarm mode on complex features",
+    "Each implementer must pass verification before completing",
+    "Run /commit-push-pr when all tasks are done",
+    "Auto-compact at 70% keeps long sessions running",
+    "Stuck? Run /code:implement again to resume"
+  ]
+}
