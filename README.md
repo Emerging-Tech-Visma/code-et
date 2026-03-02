@@ -265,10 +265,10 @@ Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"
 ### Step 10: Publish and Install
 
 ```bash
-# Push to GitHub
-git add -A && git commit -m "Add plugin" && git push
+# In Claude Code — commit, push branch, and create PR
+/commit-push-pr
 
-# In Claude Code — add marketplace and install
+# After PR is merged — add marketplace and install
 /plugin marketplace add YourOrg/your-repo
 /plugin install code@code-et
 ```
