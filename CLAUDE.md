@@ -23,7 +23,10 @@ Team project — Bun + Next.js with Claude Code plugin workflow.
 
 ## Workflow Rules
 
-- **After Plan Mode:** Create tasks only. Do NOT start implementing. Tell the user to run `/code:implement` when ready.
+1. **Plan** — Use Plan Mode (Shift+Tab) to explore and design the approach
+2. **Create Tasks** — Use `TaskCreate` with `metadata.verification` and `metadata.files`. Set `blockedBy` dependencies via `TaskUpdate`
+3. **STOP** — Do NOT start implementing. Tell the user to run `/code:implement` when ready
+4. **Implement** — User runs `/code:implement` to execute tasks with subagents or team mode
 
 ## Task Metadata Convention
 
