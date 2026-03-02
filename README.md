@@ -129,11 +129,11 @@ bun dev
 /plugin install frontend-design@claude-plugins-official
 ```
 
-**code-et plugin** (custom marketplace — add first, then install):
+**code-et plugin** (add marketplace, then install):
 
 ```
 /plugin marketplace add Emerging-Tech-Visma/code-et
-/plugin install coding-plugin@Emerging-Tech-Visma-code-et
+/plugin install coding-plugin@code-et
 ```
 
 ## Skills Reference
