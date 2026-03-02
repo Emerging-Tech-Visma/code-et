@@ -90,7 +90,6 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | code-et plugin (execution engine)            |
   | - /code:implement  (orchestrator+subagents)  |
   | - /code:setup      (stack detection)         |
-  | - /code:commit     (conventional commits)    |
   | - /code:pr         (GitHub PRs)              |
   | - /code:cleanup    (CLAUDE.md organization)  |
   | - /code:bun-init   (project scaffolding)     |
@@ -140,7 +139,6 @@ claude plugin install coding-plugin --marketplace code-et
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `/code:setup`     | Detects project stack and generates `.claude/settings.json` with permissions                                                  |
 | `/code:implement` | Picks up native tasks, spawns orchestrator + parallel implementers in worktrees. Each runs verification, auto-commits on pass |
-| `/code:commit`    | Generates conventional commit message from staged changes                                                                     |
 | `/code:pr`        | Creates GitHub PR with auto-generated description from branch commits                                                         |
 | `/code:cleanup`   | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                      |
 | `/code:bun-init`  | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                           |
@@ -159,23 +157,26 @@ claude plugin install coding-plugin --marketplace code-et
 ### Typical workflow
 
 ```
-1. Plan Mode (Shift+Tab)
+1. /clean_gone
+   → Clean up stale branches and worktrees from previous work
+
+2. Plan Mode (Shift+Tab)
    → Explore codebase with LSP, design approach
 
-2. TaskCreate
+3. TaskCreate
    → Create tasks with metadata.verification and metadata.files
    → Set blockedBy dependencies
 
-3. Exit plan mode (approve)
+4. Exit plan mode (approve)
 
-4. /code:implement
+5. /code:implement
    → Orchestrator spawns implementers in worktrees
    → Each runs tests, auto-commits on pass
 
-5. /commit-push-pr
+6. /commit-push-pr
    → Commits remaining changes, pushes, opens PR
 
-6. /code-review
+7. /code-review
    → Colleague reviews with multi-agent analysis
 ```
 
@@ -215,9 +216,10 @@ Auto-format on file writes with Prettier — add to `~/.claude/settings.json`:
 
 ## Development
 
-1. **Plan** — Use Plan Mode (Shift+Tab) to explore and design
-2. **Tasks** — Create tasks with `TaskCreate` including metadata
-3. **Implement** — Run `/code:implement` to execute tasks with subagents
-4. **PR** — Run `/commit-push-pr` to commit, push, and create PR
-5. **Review** — Colleague runs `/code-review` on the PR
-6. **Merge + Pull** — Merge on GitHub, `git pull origin main`
+1. **Clean** — Run `/clean_gone` to remove stale branches and worktrees
+2. **Plan** — Use Plan Mode (Shift+Tab) to explore and design
+3. **Tasks** — Create tasks with `TaskCreate` including metadata
+4. **Implement** — Run `/code:implement` to execute tasks with subagents
+5. **PR** — Run `/commit-push-pr` to commit, push, and create PR
+6. **Review** — Colleague runs `/code-review` on the PR
+7. **Merge + Pull** — Merge on GitHub, `git pull origin main`

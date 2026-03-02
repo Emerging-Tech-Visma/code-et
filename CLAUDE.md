@@ -11,14 +11,15 @@ Team project — Bun + Next.js with Claude Code plugin workflow.
 
 ## Plugin Usage
 
-| Task            | Tool                                    |
-| --------------- | --------------------------------------- |
-| Plan & explore  | Plan Mode (Shift+Tab) + LSP             |
-| Create tasks    | `TaskCreate` with metadata              |
-| Implement tasks | `/code:implement`                       |
-| Simplify code   | `/simplify` (auto-runs after implement) |
-| Commit + PR     | `/commit-push-pr`                       |
-| Review PR       | `/code-review`                          |
+| Task            | Tool                                     |
+| --------------- | ---------------------------------------- |
+| Clean up        | `/clean_gone` (stale branches+worktrees) |
+| Plan & explore  | Plan Mode (Shift+Tab) + LSP              |
+| Create tasks    | `TaskCreate` with metadata               |
+| Implement tasks | `/code:implement`                        |
+| Simplify code   | `/simplify` (auto-runs after implement)  |
+| Commit + PR     | `/commit-push-pr`                        |
+| Review PR       | `/code-review`                           |
 
 ## Task Metadata Convention
 
