@@ -2,6 +2,19 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.12.0] - 2026-03-03
+
+### Added
+
+- PreToolUse hook — injects `.claude/rules/*.md` as `additionalContext` before Write/Edit, ensuring forked agents see project conventions
+- Orchestrator agent now has `memory: project` to persist learnings (test commands, patterns) across sessions
+
+### Changed
+
+- `run-tests.sh` uses `jq` for robust `last_assistant_message` JSON parsing (falls back to grep)
+- Verify gate now detects abnormal agent exits (neither COMPLETE nor BLOCKED) and logs a warning
+- BLOCKED claim output truncated to 200 chars for cleaner orchestrator logs
+
 ## [1.11.0] - 2026-03-03
 
 ### Changed

@@ -14,12 +14,25 @@ if [ ! -t 0 ]; then
   HOOK_INPUT=$(cat)
 fi
 
-# Check if agent reported BLOCKED — skip tests
+# Parse last_assistant_message (jq preferred, grep fallback)
+LAST_MSG=""
 if [ -n "$HOOK_INPUT" ]; then
-  LAST_MSG=$(echo "$HOOK_INPUT" | grep -o '"last_assistant_message":"[^"]*"' | head -1 | sed 's/"last_assistant_message":"//;s/"$//')
+  if command -v jq &> /dev/null; then
+    LAST_MSG=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null)
+  else
+    LAST_MSG=$(echo "$HOOK_INPUT" | grep -o '"last_assistant_message":"[^"]*"' | head -1 | sed 's/"last_assistant_message":"//;s/"$//')
+  fi
+fi
+
+# Check agent's final status
+if [ -n "$LAST_MSG" ]; then
   if echo "$LAST_MSG" | grep -qi "BLOCKED:"; then
-    echo "{\"info\": \"$CALLER reported BLOCKED — skipping verification\", \"claim\": \"$LAST_MSG\"}"
+    CLAIM=$(echo "$LAST_MSG" | head -c 200)
+    echo "{\"info\": \"$CALLER reported BLOCKED — skipping verification\", \"claim\": \"$CLAIM\"}"
     exit 0
+  fi
+  if ! echo "$LAST_MSG" | grep -qi "COMPLETE"; then
+    echo "{\"warning\": \"$CALLER exited without COMPLETE or BLOCKED — running verification anyway\"}"
   fi
 fi
 

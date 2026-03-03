@@ -3,6 +3,7 @@ name: orchestrator
 description: Controls task execution lifecycle for a feature
 context: fork
 background: true
+memory: project
 allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskList, TaskUpdate, TaskGet
 ---
 
