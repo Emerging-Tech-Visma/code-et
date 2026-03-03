@@ -11,18 +11,20 @@ Team project — Bun + Next.js with Claude Code plugin workflow.
 
 ## Plugin Usage
 
-| Task            | Tool                                     |
-| --------------- | ---------------------------------------- |
-| Clean up        | `/clean_gone` (stale branches+worktrees) |
-| Plan & explore  | Plan Mode (Shift+Tab) + LSP              |
-| Create tasks    | `TaskCreate` with metadata               |
-| Implement tasks | `/code:implement`                        |
-| Simplify code   | `/simplify` (auto-runs after implement)  |
-| Commit + PR     | `/commit-push-pr`                        |
-| Review PR       | `/code-review`                           |
+| Task            | Tool                                      |
+| --------------- | ----------------------------------------- |
+| Clean up        | `/clean_gone` (stale branches+worktrees)  |
+| Plan feature    | `/code:plan-issue` (LSP research → tasks) |
+| Plan & explore  | Plan Mode (Shift+Tab) + LSP               |
+| Create tasks    | `TaskCreate` with metadata                |
+| Implement tasks | `/code:implement`                         |
+| Simplify code   | `/simplify` (auto-runs after implement)   |
+| Commit + PR     | `/commit-push-pr`                         |
+| Review PR       | `/code-review`                            |
 
 ## Workflow
 
+- Use `/code:plan-issue` to research codebase with LSP and create implementation tasks
 - Use `/code:implement` to execute tasks (spawns parallel agents in worktrees)
 - After planning, confirm with the user before implementing large changes
 

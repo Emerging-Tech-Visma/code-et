@@ -14,23 +14,22 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   YOU (Developer A)                          COLLEAGUE (Developer B)
   ================                          ======================
 
-  1. PLAN
+  1. PLAN + CREATE TASKS
+  +-----------------------------------+
+  | /code:plan-issue                  |  <-- code-et plugin
+  | - Detects stack (TS/Py/Rust)      |
+  | - LSP: go-to-def, refs, hover    |
+  | - Explores approaches (user pick) |
+  | - Creates tasks with file:line    |
+  +-----------------------------------+
+  |
+  OR (manual)
   +---------------------------+
   | Shift+Tab (Plan Mode)     |  <-- Claude Code native
-  | - Explore codebase        |
-  | - LSP: go-to-def, refs    |
-  | - Design approach         |
+  | + TaskCreate (native)     |
   +---------------------------+
               |
-  2. CREATE TASKS
-  +---------------------------+
-  | TaskCreate (native)       |  <-- Claude Code native
-  | - metadata.verification   |
-  | - metadata.files          |
-  | - blockedBy dependencies  |
-  +---------------------------+
-              |
-  3. IMPLEMENT
+  2. IMPLEMENT
   +-----------------------------------+
   | /code:implement                   |  <-- code-et plugin
   |                                   |
@@ -51,17 +50,17 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   |   /simplify (auto, end)           |  <-- Official plugin
   +-----------------------------------+
               |
-  4. PR
+  3. PR
   +---------------------------+
   | /commit-push-pr           |  <-- commit-commands plugin
-  | - Commits remaining       |     5. REVIEW
+  | - Commits remaining       |     4. REVIEW
   | - Pushes branch           |     +--------------------+
   | - Creates PR on GitHub    | --> | /code-review       | <-- Official
   +---------------------------+     | - Multi-agent      |
                                     | - Approve/request  |
                                     +--------------------+
                                              |
-  6. PULL                            Merge on GitHub
+  5. PULL                            Merge on GitHub
   +---------------------------+              |
   | git pull origin main      | <------------+
   +---------------------------+
@@ -93,6 +92,7 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
   | code-et plugin (execution engine)            |
+  | - /code:plan-issue (LSP research → tasks)    |
   | - /code:implement  (orchestrator+subagents)  |
   | - /code:setup      (stack detection)         |
   | - /code:pr         (GitHub PRs)              |
@@ -284,6 +284,7 @@ Then install the plugin:
 
 After installation, these skills are available:
 
+- `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — orchestrator + parallel implementers in worktrees
 - `/code:setup` — detect stack, generate settings
 - `/code:pr` — create GitHub PR
@@ -335,13 +336,14 @@ bun dev
 
 ### code-et plugin
 
-| Skill             | Description                                                                                                                                                     |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/code:setup`     | Detects project stack and generates `.claude/settings.json` with permissions                                                                                    |
-| `/code:implement` | Picks up native tasks. Subagent mode (default): orchestrator + parallel implementers in worktrees. Team mode (`--team`): Agent Swarm with distributed teammates |
-| `/code:pr`        | Creates GitHub PR with auto-generated description from branch commits                                                                                           |
-| `/code:cleanup`   | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                                                        |
-| `/code:bun-init`  | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                                                             |
+| Skill              | Description                                                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/code:plan-issue` | Research codebase with LSP, plan feature, create native tasks with file:line refs and dependencies                                                              |
+| `/code:setup`      | Detects project stack and generates `.claude/settings.json` with permissions                                                                                    |
+| `/code:implement`  | Picks up native tasks. Subagent mode (default): orchestrator + parallel implementers in worktrees. Team mode (`--team`): Agent Swarm with distributed teammates |
+| `/code:pr`         | Creates GitHub PR with auto-generated description from branch commits                                                                                           |
+| `/code:cleanup`    | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                                                        |
+| `/code:bun-init`   | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                                                             |
 
 ### Official plugins
 
