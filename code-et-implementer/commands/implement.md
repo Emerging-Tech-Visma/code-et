@@ -1,20 +1,87 @@
 ---
 context: fork
-allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskList, TaskGet, TaskUpdate
+allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
 description: Start implementation from pending tasks
 argument-hint: [--team] [--worktree]
 ---
 
 # Implement from Tasks
 
-## Step 1: Verify Tasks Exist
+## Step 1: Load Tasks (Two-Source)
+
+### 1a: Check native TaskList
 
 ```
 TaskList() → find all pending tasks
 ```
 
-If tasks exist → continue to Step 2.
-If no tasks found → error: "No pending tasks found. Create tasks first using TaskCreate or Plan Mode."
+If pending tasks exist → use them (same-session). Continue to Step 1d.
+
+### 1b: Fall back to manifest file
+
+If no pending tasks in TaskList, read the manifest:
+
+```
+manifest_path = ".claude/${CLAUDE_CODE_TASK_LIST_ID}.json"
+Read(manifest_path) → parse JSON
+```
+
+Filter for tasks where `status != "completed"`. If pending tasks found → restore them:
+
+```
+id_mapping = {}
+for task in manifest.tasks where status != "completed":
+  result = TaskCreate(
+    subject: task.subject,
+    description: task.description,
+    activeForm: task.activeForm,
+    metadata: task.metadata
+  )
+  id_mapping[task.id] = result.new_id
+
+# Restore dependencies using mapped IDs
+for task in manifest.tasks where status != "completed":
+  if task.blockedBy has entries:
+    mapped_blockers = [id_mapping[b] for b in task.blockedBy if b in id_mapping]
+    TaskUpdate(id_mapping[task.id], addBlockedBy: mapped_blockers)
+```
+
+### 1c: No tasks anywhere
+
+If both TaskList and manifest are empty or missing → error: "No pending tasks found. Run /code:plan-issue first."
+
+### 1d: Build task payload
+
+Build a full JSON payload of all pending tasks for prompt serialization.
+
+**Important:** `TaskList()` only returns summary fields (id, subject, status, owner, blockedBy). Use `TaskGet(taskId)` per task to retrieve full details (description, activeForm, metadata, blocks).
+
+```
+task_summaries = TaskList()
+pending = [t for t in task_summaries where t.status == "pending"]
+
+full_tasks = []
+for t in pending:
+  full = TaskGet(t.id)  # returns description, metadata, blocks, etc.
+  full_tasks.append(full)
+
+task_payload = JSON.stringify({
+  "manifestPath": ".claude/${CLAUDE_CODE_TASK_LIST_ID}.json",
+  "tasks": [
+    {
+      "id": t.id,
+      "subject": t.subject,
+      "description": t.description,
+      "activeForm": t.activeForm,
+      "status": t.status,
+      "metadata": t.metadata,
+      "blockedBy": t.blockedBy,
+      "blocks": t.blocks
+    }
+    for t in full_tasks
+  ]
+})
+```
 
 ## Step 2: Choose Execution Mode
 
@@ -34,15 +101,16 @@ Task(
   subagent_type: "code:orchestrator",
   prompt: """
   Execute all pending tasks.
-  Use TaskList to find all pending tasks.
-  Update task status as you complete each task.
   Worktree mode: <true if --worktree passed, false otherwise>
   Run /simplify when all tasks are done.
+
+  ## Task Data
+  <task_payload>
   """
 )
 ```
 
-The orchestrator spawns implementers, commits after each task, and reports completion. When `--worktree` is passed, tasks with non-overlapping files run in isolated worktrees for safe parallelism. Press `ctrl+t` to view progress.
+The orchestrator receives the full task payload in its prompt so it works even with `context: fork`. It spawns implementers, commits after each task, and reports completion. When `--worktree` is passed, tasks with non-overlapping files run in isolated worktrees for safe parallelism. Press `ctrl+t` to view progress.
 
 ## Step 3b: Team Mode (Agent Swarm)
 
@@ -53,8 +121,11 @@ Each teammate receives this prompt:
 ```
 You are a teammate implementing tasks from the task list.
 
+## Task Data
+<task_payload>
+
 1. Read CLAUDE.md for project rules
-2. Run TaskList to find a pending task with no blockers
+2. Run TaskList to find a pending task with no blockers (tasks are pre-loaded above)
 3. Claim it: TaskUpdate(taskId, status: 'in_progress', owner: '<your-name>')
 4. Implement the task using metadata.files as guidance
 5. Run the verification command from metadata.verification

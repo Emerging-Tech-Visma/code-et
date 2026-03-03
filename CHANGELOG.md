@@ -2,6 +2,21 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.13.0] - 2026-03-04
+
+### Added
+
+- File-based task persistence via `.claude/code-et-tasks.json` manifest
+- `/code:plan-issue` now writes task manifest after creating native tasks (Phase 4.5)
+- `/code:implement` two-source loader: tries native TaskList first, falls back to manifest file for cross-session restore
+- Orchestrator accepts full task payload in prompt — solves `context: fork` visibility problem
+- Orchestrator updates both native TaskList and manifest file on task completion (dual tracking)
+
+### Changed
+
+- `/code:implement` passes full task JSON payload to orchestrator/teammate prompts instead of relying on TaskList discovery
+- Orchestrator context management reads manifest as ground truth on re-spawn
+
 ## [1.12.1] - 2026-03-03
 
 ### Fixed
