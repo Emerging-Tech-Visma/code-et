@@ -1,6 +1,6 @@
 ---
 context: fork
-allowed-tools: Read, Grep, Glob, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
+allowed-tools: Read, Write, Grep, Glob, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
 description: Research codebase with LSP precision, plan feature, create native tasks
 argument-hint: [feature-description] [@spec-file]
 ---
@@ -158,10 +158,48 @@ After all tasks are created, set dependencies:
 TaskUpdate(taskId: "<later-task>", addBlockedBy: ["<earlier-task>"])
 ```
 
+## Phase 4.5: Persist Tasks to Manifest
+
+After all tasks and dependencies are set, serialize them to a JSON manifest file for cross-session persistence.
+
+The manifest path is derived from the `CLAUDE_CODE_TASK_LIST_ID` env var: `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`
+
+**Important:** `TaskList()` only returns summary fields (id, subject, status, owner, blockedBy). Use `TaskGet(taskId)` for each task to retrieve full details (description, metadata, blocks).
+
+```
+task_summaries = TaskList()
+full_tasks = []
+for summary in task_summaries:
+  full = TaskGet(summary.id)
+  full_tasks.append(full)
+
+manifest = {
+  "version": 1,
+  "createdAt": "<current ISO timestamp>",
+  "tasks": [
+    {
+      "id": task.id,
+      "subject": task.subject,
+      "description": task.description,
+      "activeForm": task.activeForm,
+      "status": task.status,
+      "metadata": task.metadata,
+      "blockedBy": task.blockedBy,
+      "blocks": task.blocks
+    }
+    for task in full_tasks
+  ]
+}
+
+Write(".claude/${CLAUDE_CODE_TASK_LIST_ID}.json", JSON.stringify(manifest, null, 2))
+```
+
+Each `/code:plan-issue` run **replaces** the manifest (fresh plan).
+
 ## Output
 
 After all tasks and dependencies are created:
 
 ```
-"Plan complete: N tasks created (ctrl+t). Run /code:implement to start."
+"Plan complete: N tasks created and saved to .claude/<task-list-id>.json. Run /code:implement to start."
 ```

@@ -13,8 +13,30 @@ You are the **master controller** for implementing a feature. You spawn child ta
 
 ## Input (from prompt)
 
-- **Feature name** — process all pending tasks
-- Final: "All tasks complete. Run `/commit-push-pr` to finish."
+The prompt contains a `## Task Data` section with a JSON payload of all tasks:
+
+```json
+{
+  "manifestPath": ".claude/code-et-tasks.json",
+  "tasks": [
+    {
+      "id": "plan-1",
+      "subject": "...",
+      "description": "...",
+      "activeForm": "...",
+      "status": "pending",
+      "metadata": { "verification": "...", "files": [...] },
+      "blockedBy": [],
+      "blocks": ["plan-2"]
+    }
+  ]
+}
+```
+
+On startup:
+1. Parse the task JSON from prompt
+2. Cross-reference with `TaskList()` — if tasks already exist in native list, use those IDs; otherwise restore via `TaskCreate()`
+3. Store `manifestPath` for persistent status updates
 
 ## Worktree Mode
 
@@ -53,14 +75,17 @@ use_worktree = worktree_mode AND can_use_worktree(task, in_flight_tasks)
 LOOP until all tasks completed:
 
   # PHASE 1: SPAWN ALL UNBLOCKED TASKS (max 5 concurrent)
-  tasks = TaskList()
+  tasks = TaskList()  # returns summary only (id, subject, status, blockedBy)
   pending_tasks = filter by status="pending"
 
   for task in pending_tasks:
     if all blockers completed AND not already in_flight AND in_flight.count < 5:
       TaskUpdate(task.id, status: "in_progress", owner: "orchestrator")
 
-      use_worktree = worktree_mode AND can_use_worktree(task, in_flight_tasks)
+      # Get full task details — prefer prompt data, fall back to TaskGet()
+      full_task = find task in prompt_tasks by id OR TaskGet(task.id)
+
+      use_worktree = worktree_mode AND can_use_worktree(full_task, in_flight_tasks)
 
       agent_id = Task(
         subagent_type: "code:implementer",
@@ -68,9 +93,9 @@ LOOP until all tasks completed:
         isolation: "worktree" if use_worktree else omitted,
         prompt: """
         Task ID: <id>
-        Subject: <subject>
-        Description: <description>
-        Verification: <metadata.verification>
+        Subject: <full_task.subject>
+        Description: <full_task.description>
+        Verification: <full_task.metadata.verification>
 
         Implement this task. Return COMPLETE when done.
         """
@@ -86,6 +111,7 @@ LOOP until all tasks completed:
 
     if result contains "COMPLETE":
       TaskUpdate(task_id, status: "completed")
+      update_manifest(manifestPath, task_id, "completed")
       Skill("commit-commands:commit")
       Remove from in_flight
 
@@ -117,6 +143,8 @@ END LOOP
 
 A task is ready when: status is "pending", all blockedBy have status "completed", and not already in_flight.
 
+**Note:** `TaskList()` returns summary fields only (id, subject, status, owner, blockedBy) — enough for status checks and scheduling. Use `TaskGet(taskId)` when you need full details (description, metadata) for spawning implementers.
+
 ```
 tasks = TaskList()
 ready_tasks = [t for t in tasks
@@ -124,6 +152,7 @@ ready_tasks = [t for t in tasks
   and all(b.status == "completed" for b in t.blockedBy)
   and t.id not in in_flight]
 # Spawn ALL ready tasks (up to max 5 concurrent)
+# Use TaskGet(task.id) or prompt data for full task details before spawning
 ```
 
 ## Committing Changes
@@ -153,16 +182,33 @@ After each task: `Skill("commit-commands:commit")` — auto-generates convention
 - **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 5)
 - **Poll every 5 seconds** for completion detection
 - **Commit after each task** via `/commit` skill
-- **Use native TaskList/TaskUpdate** — no manifest files
+- **Dual tracking** — update both `TaskUpdate()` (session) AND manifest file (persistent)
+
+## Manifest Updates
+
+When a task completes or is blocked, update the manifest file:
+
+```
+update_manifest(manifestPath, task_id, new_status):
+  manifest = JSON.parse(Read(manifestPath))
+  task = manifest.tasks.find(t => t.id == task_id)
+  if task: task.status = new_status
+  Write(manifestPath, JSON.stringify(manifest, null, 2))
+```
+
+Match tasks by subject if IDs differ between manifest and native TaskList (IDs are reassigned on restore).
 
 ## Context Management
 
-Auto-compact at 70%. On re-spawn, reconstruct from TaskList:
+Auto-compact at 70%. On re-spawn, read the manifest file as ground truth and cross-reference with `TaskList()`:
 
 ```
+manifest = JSON.parse(Read(manifestPath))
 tasks = TaskList()
-in_flight = [t.id for t in tasks
-             where status="in_progress"]
+
+# Manifest is the source of truth for completion status
+# TaskList shows in-flight agents (status="in_progress")
+in_flight = [t.id for t in tasks where status="in_progress"]
 # Don't re-spawn for in_flight tasks — they're still running
 # Continue polling loop
 ```
