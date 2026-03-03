@@ -2,6 +2,15 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.11.0] - 2026-03-03
+
+### Changed
+
+- Remove default worktree isolation from implementer agent — was causing file write failures
+- Worktree isolation is now opt-in via `--worktree` flag on `/code:implement`
+- Orchestrator checks `metadata.files` overlap between concurrent tasks before using worktrees
+- Tasks with overlapping files or missing file metadata always run in the main working tree
+
 ## [1.10.0] - 2026-03-03
 
 ### Added

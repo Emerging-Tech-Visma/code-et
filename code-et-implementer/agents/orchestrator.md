@@ -15,6 +15,37 @@ You are the **master controller** for implementing a feature. You spawn child ta
 - **Feature name** — process all pending tasks
 - Final: "All tasks complete. Run `/commit-push-pr` to finish."
 
+## Worktree Mode
+
+When `Worktree mode: true` appears in the prompt, enable worktree isolation for tasks with non-overlapping files.
+
+### File Overlap Check
+
+Before spawning a task, compare its `metadata.files` against all currently in-flight tasks:
+
+```
+can_use_worktree(task, in_flight_tasks):
+  if task has no metadata.files → return false (safe default)
+
+  task_files = normalize(task.metadata.files)  # strip :line-range suffixes
+  for flying_task in in_flight_tasks:
+    if flying_task has no metadata.files → return false
+    flying_files = normalize(flying_task.metadata.files)
+    if any overlap between task_files and flying_files → return false
+  return true
+```
+
+Normalize means stripping `:line-range` suffixes (e.g. `src/foo.ts:10-20` → `src/foo.ts`).
+
+### Spawn Decision
+
+```
+use_worktree = worktree_mode AND can_use_worktree(task, in_flight_tasks)
+
+# If use_worktree → pass isolation: "worktree" to Task()
+# Otherwise → omit isolation (runs in main working tree)
+```
+
 ## Execution Loop (Parallel)
 
 ```
@@ -28,9 +59,12 @@ LOOP until all tasks completed:
     if all blockers completed AND not already in_flight AND in_flight.count < 5:
       TaskUpdate(task.id, status: "in_progress", owner: "orchestrator")
 
+      use_worktree = worktree_mode AND can_use_worktree(task, in_flight_tasks)
+
       agent_id = Task(
         subagent_type: "code:implementer",
         run_in_background: true,  # NON-BLOCKING
+        isolation: "worktree" if use_worktree else omitted,
         prompt: """
         Task ID: <id>
         Subject: <subject>
