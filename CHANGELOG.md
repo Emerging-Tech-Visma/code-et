@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.12.1] - 2026-03-03
+
+### Fixed
+
+- Add `Edit` and `Write` to plugin permissions so background agents (orchestrator/implementer) can modify files without user prompts
+
 ## [1.12.0] - 2026-03-03
 
 ### Added
