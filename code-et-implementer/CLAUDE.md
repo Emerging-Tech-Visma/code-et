@@ -25,7 +25,7 @@ Team project — Bun + Next.js with Claude Code plugin workflow.
 ## Workflow
 
 - Use `/code:plan-issue` to research codebase with LSP and create implementation tasks
-- Use `/code:implement` to execute tasks (spawns parallel agents in worktrees)
+- Use `/code:implement` to execute tasks (spawns parallel agents; add `--worktree` for isolated worktrees on non-overlapping tasks)
 - After planning, confirm with the user before implementing large changes
 
 ## Task Metadata Convention

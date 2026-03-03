@@ -1,6 +1,6 @@
 {
   "name": "code",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view).",
   "author": {
     "name": "Kennet Kusk"

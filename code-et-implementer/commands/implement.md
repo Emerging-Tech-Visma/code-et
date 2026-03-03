@@ -2,7 +2,7 @@
 context: fork
 allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskList, TaskGet, TaskUpdate
 description: Start implementation from pending tasks
-argument-hint: [--team]
+argument-hint: [--team] [--worktree]
 ---
 
 # Implement from Tasks
@@ -21,7 +21,8 @@ If no tasks found → error: "No pending tasks found. Create tasks first using T
 Parse `$ARGUMENTS`:
 
 - `--team` → team mode (Step 3b)
-- No flag → subagent mode (Step 3a)
+- `--worktree` → enable worktree isolation for non-overlapping tasks
+- No flags → subagent mode without worktree isolation (Step 3a)
 
 If `--team` is passed but `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is not set → error:
 "Team mode requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in .claude/settings.json env."
@@ -35,12 +36,13 @@ Task(
   Execute all pending tasks.
   Use TaskList to find all pending tasks.
   Update task status as you complete each task.
+  Worktree mode: <true if --worktree passed, false otherwise>
   Run /simplify when all tasks are done.
   """
 )
 ```
 
-The orchestrator spawns implementers in isolated worktrees, commits after each task, and reports completion. Press `ctrl+t` to view progress.
+The orchestrator spawns implementers, commits after each task, and reports completion. When `--worktree` is passed, tasks with non-overlapping files run in isolated worktrees for safe parallelism. Press `ctrl+t` to view progress.
 
 ## Step 3b: Team Mode (Agent Swarm)
 

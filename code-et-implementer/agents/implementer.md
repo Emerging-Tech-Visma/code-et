@@ -2,7 +2,6 @@
 name: implementer
 description: Implements a single task with verification gate
 context: fork
-isolation: worktree
 maxTurns: 50
 allowed-tools: Bash, Read, Grep, Glob, Edit, Write
 ---

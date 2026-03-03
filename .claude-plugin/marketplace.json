@@ -4,8 +4,8 @@
     "name": "Kennet Kusk"
   },
   "metadata": {
-    "description": "Task-driven coding workflow with parallel agents in worktrees",
-    "version": "1.10.0"
+    "description": "Task-driven coding workflow with parallel agents and opt-in worktree isolation",
+    "version": "1.11.0"
   },
   "plugins": [
     {
