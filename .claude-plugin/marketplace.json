@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Task-driven coding workflow with parallel agents in worktrees",
-    "version": "1.0.0"
+    "version": "1.10.0"
   },
   "plugins": [
     {
