@@ -2,6 +2,20 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.14.0] - 2026-03-04
+
+### Added
+
+- Smart execution mode for `/code:implement` — automatically chooses standalone, subagent, or team mode based on task count and complexity
+- Standalone mode: 1-2 simple tasks (no deps, ≤3 files each) run inline without spawning orchestrator/implementer agents
+- Decision logic evaluates `total`, `has_deps`, and `is_complex` after task loading
+
+### Changed
+
+- Subagent mode (previously default for all cases) is now Step 3b, triggered for 3+ tasks, dependencies, or complex tasks
+- Team mode renumbered to Step 3c (content unchanged)
+- `--team` flag always overrides automatic mode selection
+
 ## [1.13.0] - 2026-03-04
 
 ### Added
