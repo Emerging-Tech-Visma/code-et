@@ -90,13 +90,23 @@ fi
 
 EXIT_CODE=$?
 
+# cmux notification helper
+_cmux_notify() {
+  if command -v cmux &>/dev/null && [ -n "$CMUX_SOCKET_PATH" ]; then
+    cmux notify --title "$1" --subtitle "$2" --body "$3" 2>/dev/null || true
+  fi
+}
+
 if [ $EXIT_CODE -eq 124 ]; then
   echo "{\"error\": \"Tests timed out after 120 seconds\"}"
+  _cmux_notify "$CALLER" "Timeout" "Tests timed out after 120 seconds"
   exit $FAIL_EXIT
 elif [ $EXIT_CODE -ne 0 ]; then
   echo "{\"error\": \"Tests failed (exit $EXIT_CODE)\"}"
+  _cmux_notify "$CALLER" "Tests Failed" "Verification failed (exit $EXIT_CODE)"
   exit $FAIL_EXIT
 fi
 
 echo '{"verification": "Tests passed"}'
+_cmux_notify "$CALLER" "Tests Passed" "Verification gate passed"
 exit 0

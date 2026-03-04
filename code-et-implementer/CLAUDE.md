@@ -50,6 +50,15 @@ metadata: {
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
 
+## cmux Integration
+
+code-et hooks are cmux-aware. When running inside cmux:
+- `run-tests.sh` sends notifications on test pass/fail/timeout
+- `teammate-idle.sh` alerts on stalled implementers
+- `/code:workspace` sets up a workspace per feature branch
+
+All cmux calls are guarded with `command -v cmux` checks — hooks work fine without cmux installed.
+
 ## Code Standards
 
 - TypeScript strict mode
