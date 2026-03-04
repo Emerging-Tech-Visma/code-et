@@ -2,6 +2,19 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.15.0] - 2026-03-04
+
+### Added
+
+- cmux-aware notifications in `run-tests.sh` — sends desktop notifications on test pass, fail, and timeout when running inside cmux
+- cmux notification in `teammate-idle.sh` — alerts when an implementer appears stuck
+- `/code:workspace` skill — sets up a cmux workspace named after the current git branch with optional browser pane split
+- cmux integration section in CLAUDE.md documenting hook behavior
+
+### Notes
+
+- All cmux calls are guarded with `command -v cmux && $CMUX_SOCKET_PATH` — zero impact for non-cmux users
+
 ## [1.14.0] - 2026-03-04
 
 ### Added
