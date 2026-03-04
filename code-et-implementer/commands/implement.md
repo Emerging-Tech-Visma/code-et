@@ -85,16 +85,52 @@ task_payload = JSON.stringify({
 
 ## Step 2: Choose Execution Mode
 
-Parse `$ARGUMENTS`:
-
-- `--team` → team mode (Step 3b)
-- `--worktree` → enable worktree isolation for non-overlapping tasks
-- No flags → subagent mode without worktree isolation (Step 3a)
+Parse `$ARGUMENTS` for flags: `--team`, `--worktree`.
 
 If `--team` is passed but `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is not set → error:
 "Team mode requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in .claude/settings.json env."
 
-## Step 3a: Subagent Mode (default)
+Evaluate task count and complexity to pick the right mode:
+
+```
+pending = [t for t in full_tasks where t.status == "pending"]
+total = len(pending)
+has_deps = any(t.blockedBy is non-empty for t in pending)
+is_complex = any(len(t.metadata.files) > 3 for t in pending)
+
+if --team flag           → TEAM MODE (Step 3c)
+elif total <= 2 AND NOT has_deps AND NOT is_complex → STANDALONE (Step 3a)
+else                     → SUBAGENT MODE (Step 3b)
+```
+
+Report: `"N pending task(s). Mode: standalone|subagent|team"`
+
+## Step 3a: Standalone Mode (inline)
+
+Implement task(s) directly without spawning orchestrator or implementer agents. Use this for 1-2 simple tasks with no dependencies.
+
+**Note:** `--worktree` is ignored in standalone mode (no benefit to isolating inline work).
+
+For each pending task, in order:
+
+1. `TaskUpdate(task.id, status: "in_progress")`
+2. Read all files listed in `task.metadata.files`
+3. Implement changes per task description (use file:line refs as guidance)
+4. Run `task.metadata.verification` — if it fails, debug up to 3 attempts. If still failing → `TaskUpdate(task.id, status: "in_progress")`, report BLOCKED, and continue to next task
+5. Self-review:
+   - **Scope check:** did I only change what the task asked for?
+   - **Quality check:** no leftover debug code, no regressions
+6. `TaskUpdate(task.id, status: "completed")`
+7. Update manifest JSON at `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json` — set the matching task's status to `"completed"`
+8. `Skill("commit-commands:commit")`
+
+After all tasks are processed:
+
+1. `Skill("simplify")` — review changed code for quality
+2. Delete completed tasks from TaskList
+3. Report final status (completed / blocked counts)
+
+## Step 3b: Subagent Mode (default)
 
 ```
 Task(
@@ -112,7 +148,7 @@ Task(
 
 The orchestrator receives the full task payload in its prompt so it works even with `context: fork`. It spawns implementers, commits after each task, and reports completion. When `--worktree` is passed, tasks with non-overlapping files run in isolated worktrees for safe parallelism. Press `ctrl+t` to view progress.
 
-## Step 3b: Team Mode (Agent Swarm)
+## Step 3c: Team Mode (Agent Swarm)
 
 Become the **team lead**. Spawn N teammates where N = number of independent pending tasks (capped at 8).
 
