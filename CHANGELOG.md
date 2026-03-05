@@ -2,6 +2,16 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.16.0] - 2026-03-05
+
+### Changed
+
+- Drop `activeForm` from task creation and manifests — no longer required since Claude Code 2.1.69
+- Remove `Edit` from orchestrator's `allowed-tools` — enforces "never implement code directly" at system level
+- `inject-rules.sh` now reads `agent_type` from hook stdin — returns warning instead of rules for orchestrator agents
+- `pre-compact.sh` reads `worktree.branch` from hook event data instead of spawning `git branch`
+- Trimmed agent report verbosity: implementer returns 1-line COMPLETE, orchestrator uses concise progress/final reports
+
 ## [1.15.0] - 2026-03-04
 
 ### Added

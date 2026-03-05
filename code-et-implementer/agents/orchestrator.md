@@ -4,7 +4,7 @@ description: Controls task execution lifecycle for a feature
 context: fork
 background: true
 memory: project
-allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskList, TaskUpdate, TaskGet
+allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Task, Skill, TaskList, TaskUpdate, TaskGet
 ---
 
 # Orchestrator Agent
@@ -23,7 +23,6 @@ The prompt contains a `## Task Data` section with a JSON payload of all tasks:
       "id": "plan-1",
       "subject": "...",
       "description": "...",
-      "activeForm": "...",
       "status": "pending",
       "metadata": { "verification": "...", "files": [...] },
       "blockedBy": [],
@@ -218,24 +217,11 @@ in_flight = [t.id for t in tasks where status="in_progress"]
 ### Progress Report (after each task)
 
 ```
-## Task <id> Complete
-
-Subject: <subject>
-Status: COMPLETED
-Commit: <hash>
-
-Progress: <completed>/<total> tasks
-Next: <next task subject>
+Task <id> DONE (<completed>/<total>). Next: <next task subject>
 ```
 
 ### Final Report
 
 ```
-## Feature Complete
-
-All <total> tasks completed.
-Commits: <count>
-Simplify check: <result>
-
-Next: Run /commit-push-pr to finish.
+All <total> tasks complete. Simplify: <pass/fail>. Run /commit-push-pr to finish.
 ```
