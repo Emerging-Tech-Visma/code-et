@@ -143,7 +143,6 @@ For each task, create with full metadata:
 TaskCreate(
   subject: "<imperative title>",
   description: "<detailed steps with file:line refs>\n\nVerification: <command>\nExpected outcome: <what success looks like>",
-  activeForm: "<present continuous form>",
   metadata: {
     "verification": "<specific test/build command>",
     "expected_outcome": "<what success looks like>",
@@ -181,7 +180,6 @@ manifest = {
       "id": task.id,
       "subject": task.subject,
       "description": task.description,
-      "activeForm": task.activeForm,
       "status": task.status,
       "metadata": task.metadata,
       "blockedBy": task.blockedBy,

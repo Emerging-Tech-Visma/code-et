@@ -34,7 +34,6 @@ for task in manifest.tasks where status != "completed":
   result = TaskCreate(
     subject: task.subject,
     description: task.description,
-    activeForm: task.activeForm,
     metadata: task.metadata
   )
   id_mapping[task.id] = result.new_id
@@ -54,7 +53,7 @@ If both TaskList and manifest are empty or missing → error: "No pending tasks 
 
 Build a full JSON payload of all pending tasks for prompt serialization.
 
-**Important:** `TaskList()` only returns summary fields (id, subject, status, owner, blockedBy). Use `TaskGet(taskId)` per task to retrieve full details (description, activeForm, metadata, blocks).
+**Important:** `TaskList()` only returns summary fields (id, subject, status, owner, blockedBy). Use `TaskGet(taskId)` per task to retrieve full details (description, metadata, blocks).
 
 ```
 task_summaries = TaskList()
@@ -72,7 +71,6 @@ task_payload = JSON.stringify({
       "id": t.id,
       "subject": t.subject,
       "description": t.description,
-      "activeForm": t.activeForm,
       "status": t.status,
       "metadata": t.metadata,
       "blockedBy": t.blockedBy,

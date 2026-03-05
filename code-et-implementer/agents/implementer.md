@@ -66,13 +66,8 @@ Before returning COMPLETE:
 **IF PASS (exit 0):**
 
 ```
-## Task Complete
-
-Verification: PASSED
-Command: <verification>
-Evidence: <quote test output>
-
-COMPLETE
+COMPLETE: <1-line summary>
+Verification: PASSED (<verification command>)
 ```
 
 **IF FAIL — Structured Debug (max 3 attempts):**
