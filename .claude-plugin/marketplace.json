@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Task-driven coding workflow with parallel agents and opt-in worktree isolation",
-    "version": "1.16.0"
+    "version": "1.16.1"
   },
   "plugins": [
     {
