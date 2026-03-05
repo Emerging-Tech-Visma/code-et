@@ -2,6 +2,13 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.16.1] - 2026-03-05
+
+### Added
+
+- Document `--plugin-dir` for local development in README — test plugin changes instantly without install/update/restart
+- Add tip about `--plugin-dir` in "Building a Plugin" Step 8
+
 ## [1.16.0] - 2026-03-05
 
 ### Changed

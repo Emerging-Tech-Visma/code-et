@@ -258,6 +258,8 @@ Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"
 }
 ```
 
+> **Tip:** Use `claude --plugin-dir ./your-plugin-dir` to test locally without installing. Hook scripts resolve via `${CLAUDE_PLUGIN_ROOT}`, and skill `.md` files can reference sibling files via `${CLAUDE_SKILL_DIR}`.
+
 ### Step 9: Add Plugin CLAUDE.md
 
 `code-et-implementer/CLAUDE.md` contains instructions loaded when the plugin is active. This is where you document workflow rules, conventions, and project standards.
@@ -313,6 +315,18 @@ Then in Claude Code:
 ```
 
 After installation, verify skills are available by typing `/code:` — you should see implement, setup, cleanup, pr, and bun-init.
+
+## Local Development
+
+Test plugin changes instantly without the install/update/restart cycle:
+
+```bash
+claude --plugin-dir /path/to/code-et/code-et-implementer
+```
+
+This loads all commands, agents, and hooks directly from disk. Works from any project folder — hook scripts resolve via `${CLAUDE_PLUGIN_ROOT}`.
+
+Verify: type `/code:` and confirm all 7 skills appear.
 
 ## Prerequisites
 
