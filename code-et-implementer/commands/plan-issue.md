@@ -1,6 +1,6 @@
 ---
 context: fork
-allowed-tools: Read, Write, Grep, Glob, AskUserQuestion, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
+allowed-tools: Read, Write, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
 description: Research codebase with LSP precision, plan feature, create native tasks
 argument-hint: [feature-description] [@spec-file]
 ---
@@ -39,22 +39,12 @@ Glob + Grep → find relevant modules, patterns, existing similar features
 Read → understand current architecture
 ```
 
-Present approaches to the user with trade-offs:
+Evaluate approaches internally, pick the best one based on:
+- Alignment with existing codebase patterns
+- Minimal blast radius (fewest files/lines changed)
+- Least risk of regressions
 
-```
-AskUserQuestion(
-  questions: [{
-    question: "Which approach should we use?",
-    header: "Approach",
-    options: [
-      { label: "Approach A (Recommended)", description: "..." },
-      { label: "Approach B", description: "..." },
-      { label: "Approach C", description: "..." }
-    ],
-    multiSelect: false
-  }]
-)
-```
+Log the decision: `"Approach: <name> — <1-line reason>"`
 
 ## Phase 0.8: Detect Stack → Select LSP
 
@@ -113,29 +103,7 @@ Before presenting the plan, verify each task has:
 
 If any task is missing these → go back and research more with LSP.
 
-## Phase 3: User Confirmation
-
-Present the full plan summary to the user:
-
-```
-AskUserQuestion(
-  questions: [{
-    question: "Create N tasks from this plan?",
-    header: "Confirm",
-    options: [
-      { label: "Create tasks", description: "Create all N tasks with dependencies" },
-      { label: "Revise plan", description: "Go back and adjust the approach" },
-      { label: "Cancel", description: "Abort without creating tasks" }
-    ],
-    multiSelect: false
-  }]
-)
-```
-
-If "Revise plan" → return to Phase 0.7.
-If "Cancel" → exit with message.
-
-## Phase 4: Create Tasks
+## Phase 3: Create Tasks
 
 For each task, create with full metadata:
 
@@ -157,7 +125,7 @@ After all tasks are created, set dependencies:
 TaskUpdate(taskId: "<later-task>", addBlockedBy: ["<earlier-task>"])
 ```
 
-## Phase 4.5: Persist Tasks to Manifest
+## Phase 3.5: Persist Tasks to Manifest
 
 After all tasks and dependencies are set, serialize them to a JSON manifest file for cross-session persistence.
 
@@ -200,4 +168,10 @@ After all tasks and dependencies are created:
 
 ```
 "Plan complete: N tasks created and saved to .claude/<task-list-id>.json. Run /code:implement to start."
+```
+
+Send cmux notification:
+
+```
+Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Plan Complete' --subtitle 'N tasks created' || true")
 ```

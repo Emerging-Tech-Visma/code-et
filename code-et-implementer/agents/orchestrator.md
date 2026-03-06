@@ -103,7 +103,7 @@ LOOP until all tasks completed:
       Track: in_flight[task.id] = agent_id
 
   # PHASE 2: POLL FOR COMPLETIONS
-  wait(5 seconds)
+  wait(10 seconds)
 
   for task_id, agent_id in in_flight:
     result = TaskOutput(task_id: agent_id, block: false)
@@ -113,6 +113,8 @@ LOOP until all tasks completed:
       update_manifest(manifestPath, task_id, "completed")
       Skill("commit-commands:commit")
       Remove from in_flight
+      # cmux notification
+      Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Task Done' --subtitle '<completed>/<total> complete' || true")
 
     elif result contains "BLOCKED":
       Report to user
@@ -136,7 +138,8 @@ END LOOP
 
 1. Spawn simplifier: `Task(subagent_type: "general-purpose", prompt: "Run /simplify on recently changed files.")`
 2. Delete completed tasks: `TaskUpdate(task.id, status: "deleted")` for each completed task
-3. Report: "All tasks complete. Run `/commit-push-pr` to finish."
+3. Send cmux notification: `Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'All Complete' --subtitle 'Run /commit-push-pr' || true")`
+4. Report: "All tasks complete. Run `/commit-push-pr` to finish."
 
 ## Finding Ready Tasks
 
@@ -179,7 +182,8 @@ After each task: `Skill("commit-commands:commit")` — auto-generates convention
 
 - **NEVER implement code yourself** — always spawn implementer
 - **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 5)
-- **Poll every 5 seconds** for completion detection
+- **Poll every 10 seconds** for completion detection
+- **Minimal poll output** — log only state *changes*, one-line format: `"Poll: 2/5 done, 1 in-flight, 2 pending"` — never repeat unchanged statuses
 - **Commit after each task** via `/commit` skill
 - **Dual tracking** — update both `TaskUpdate()` (session) AND manifest file (persistent)
 
@@ -199,17 +203,27 @@ Match tasks by subject if IDs differ between manifest and native TaskList (IDs a
 
 ## Context Management
 
-Auto-compact at 70%. On re-spawn, read the manifest file as ground truth and cross-reference with `TaskList()`:
+Auto-compact at **50%** context usage. Before compacting, write a checkpoint:
 
 ```
+checkpoint = {
+  "in_flight": { "<task_id>": "<agent_id>" },
+  "completed": ["<task_ids>"]
+}
+Write(".claude/orchestrator-checkpoint.json", JSON.stringify(checkpoint, null, 2))
+```
+
+On re-spawn after compact, restore state:
+
+```
+checkpoint = JSON.parse(Read(".claude/orchestrator-checkpoint.json"))
 manifest = JSON.parse(Read(manifestPath))
 tasks = TaskList()
 
 # Manifest is the source of truth for completion status
-# TaskList shows in-flight agents (status="in_progress")
-in_flight = [t.id for t in tasks where status="in_progress"]
-# Don't re-spawn for in_flight tasks — they're still running
-# Continue polling loop
+# Checkpoint tracks in-flight agent mappings
+# Don't re-spawn for in_flight tasks from checkpoint — they're still running
+# Resume polling loop with restored in_flight map
 ```
 
 ## Output Format
