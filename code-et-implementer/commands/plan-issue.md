@@ -1,6 +1,5 @@
 ---
-context: fork
-allowed-tools: Read, Write, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
+tools: Read, Write, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
 description: Research codebase with LSP precision, plan feature, create native tasks
 argument-hint: [feature-description] [@spec-file]
 ---

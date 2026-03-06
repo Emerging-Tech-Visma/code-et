@@ -2,6 +2,19 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.18.0] - 2026-03-06
+
+### Changed
+
+- Modernize agent frontmatter: `allowed-tools` → `tools`, remove `context: fork`, `Task` → `Agent`
+- Implementer now commits in worktree — orchestrator merges branch back instead of calling /commit
+- Worktree isolation is now always-on via declarative `isolation: worktree` in implementer frontmatter
+- Remove `--worktree` opt-in flag from `/code:implement` — worktrees are the default
+
+### Fixed
+
+- Add `TaskOutput` to orchestrator tools (was missing, needed for polling)
+
 ## [1.17.0] - 2026-03-06
 
 ### Changed

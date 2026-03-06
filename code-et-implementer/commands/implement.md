@@ -1,8 +1,8 @@
 ---
-context: fork
-allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Task, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
+background: true
+tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
 description: Start implementation from pending tasks
-argument-hint: [--team] [--worktree]
+argument-hint: [--team]
 ---
 
 # Implement from Tasks
@@ -83,7 +83,7 @@ task_payload = JSON.stringify({
 
 ## Step 2: Choose Execution Mode
 
-Parse `$ARGUMENTS` for flags: `--team`, `--worktree`.
+Parse `$ARGUMENTS` for flags: `--team`.
 
 If `--team` is passed but `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is not set → error:
 "Team mode requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in .claude/settings.json env."
@@ -103,11 +103,10 @@ Report: `"N pending task(s). Mode: subagent|team"`
 ## Step 3a: Subagent Mode (default)
 
 ```
-Task(
+Agent(
   subagent_type: "code:orchestrator",
   prompt: """
   Execute all pending tasks.
-  Worktree mode: <true if --worktree passed, false otherwise>
   Run /simplify when all tasks are done.
 
   ## Task Data
@@ -116,7 +115,7 @@ Task(
 )
 ```
 
-The orchestrator receives the full task payload in its prompt so it works even with `context: fork`. It spawns implementers, commits after each task, and reports completion. When `--worktree` is passed, tasks with non-overlapping files run in isolated worktrees for safe parallelism. Press `ctrl+t` to view progress.
+The orchestrator receives the full task payload in its prompt. It spawns implementers in worktrees, merges branches back after each task, and reports completion. Press `ctrl+t` to view progress.
 
 Send cmux notification:
 

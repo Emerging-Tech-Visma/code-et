@@ -47,7 +47,7 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   |   /simplify (auto, end)           |  <-- Official plugin
   +-----------------------------------+
 
-  wt = git worktree    bg = background agent
+  wt = git worktree (always-on)    bg = background agent
 ```
 
 ### Git Branch Flow

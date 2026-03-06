@@ -1,10 +1,9 @@
 ---
 name: orchestrator
 description: Controls task execution lifecycle for a feature
-context: fork
 background: true
 memory: project
-allowed-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Task, Skill, TaskList, TaskUpdate, TaskGet
+tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Agent, Skill, TaskList, TaskUpdate, TaskGet, TaskOutput
 ---
 
 # Orchestrator Agent
@@ -37,37 +36,6 @@ On startup:
 2. Cross-reference with `TaskList()` — if tasks already exist in native list, use those IDs; otherwise restore via `TaskCreate()`
 3. Store `manifestPath` for persistent status updates
 
-## Worktree Mode
-
-When `Worktree mode: true` appears in the prompt, enable worktree isolation for tasks with non-overlapping files.
-
-### File Overlap Check
-
-Before spawning a task, compare its `metadata.files` against all currently in-flight tasks:
-
-```
-can_use_worktree(task, in_flight_tasks):
-  if task has no metadata.files → return false (safe default)
-
-  task_files = normalize(task.metadata.files)  # strip :line-range suffixes
-  for flying_task in in_flight_tasks:
-    if flying_task has no metadata.files → return false
-    flying_files = normalize(flying_task.metadata.files)
-    if any overlap between task_files and flying_files → return false
-  return true
-```
-
-Normalize means stripping `:line-range` suffixes (e.g. `src/foo.ts:10-20` → `src/foo.ts`).
-
-### Spawn Decision
-
-```
-use_worktree = worktree_mode AND can_use_worktree(task, in_flight_tasks)
-
-# If use_worktree → pass isolation: "worktree" to Task()
-# Otherwise → omit isolation (runs in main working tree)
-```
-
 ## Execution Loop (Parallel)
 
 ```
@@ -84,19 +52,16 @@ LOOP until all tasks completed:
       # Get full task details — prefer prompt data, fall back to TaskGet()
       full_task = find task in prompt_tasks by id OR TaskGet(task.id)
 
-      use_worktree = worktree_mode AND can_use_worktree(full_task, in_flight_tasks)
-
-      agent_id = Task(
+      agent_id = Agent(
         subagent_type: "code:implementer",
         run_in_background: true,  # NON-BLOCKING
-        isolation: "worktree" if use_worktree else omitted,
         prompt: """
         Task ID: <id>
         Subject: <full_task.subject>
         Description: <full_task.description>
         Verification: <full_task.metadata.verification>
 
-        Implement this task. Return COMPLETE when done.
+        Implement this task. Commit your changes. Return COMPLETE when done.
         """
       )
 
@@ -109,9 +74,10 @@ LOOP until all tasks completed:
     result = TaskOutput(task_id: agent_id, block: false)
 
     if result contains "COMPLETE":
+      # Merge worktree branch (returned in agent result)
+      Bash("git merge <worktree-branch> --no-edit")
       TaskUpdate(task_id, status: "completed")
       update_manifest(manifestPath, task_id, "completed")
-      Skill("commit-commands:commit")
       Remove from in_flight
       # cmux notification
       Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Task Done' --subtitle '<completed>/<total> complete' || true")
@@ -136,7 +102,7 @@ END LOOP
 
 ## After All Tasks Complete
 
-1. Spawn simplifier: `Task(subagent_type: "general-purpose", prompt: "Run /simplify on recently changed files.")`
+1. Spawn simplifier: `Agent(subagent_type: "general-purpose", prompt: "Run /simplify on recently changed files.")`
 2. Delete completed tasks: `TaskUpdate(task.id, status: "deleted")` for each completed task
 3. Send cmux notification: `Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'All Complete' --subtitle 'Run /commit-push-pr' || true")`
 4. Report: "All tasks complete. Run `/commit-push-pr` to finish."
@@ -157,9 +123,9 @@ ready_tasks = [t for t in tasks
 # Use TaskGet(task.id) or prompt data for full task details before spawning
 ```
 
-## Committing Changes
+## Merging Changes
 
-After each task: `Skill("commit-commands:commit")` — auto-generates conventional commit.
+After each task completes, merge the worktree branch back: `Bash("git merge <worktree-branch> --no-edit")`.
 
 ## Error Handling
 
@@ -184,7 +150,7 @@ After each task: `Skill("commit-commands:commit")` — auto-generates convention
 - **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 5)
 - **Poll every 10 seconds** for completion detection
 - **Minimal poll output** — log only state *changes*, one-line format: `"Poll: 2/5 done, 1 in-flight, 2 pending"` — never repeat unchanged statuses
-- **Commit after each task** via `/commit` skill
+- **Merge after each task** — implementer commits in worktree, orchestrator merges branch back
 - **Dual tracking** — update both `TaskUpdate()` (session) AND manifest file (persistent)
 
 ## Manifest Updates
