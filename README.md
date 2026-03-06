@@ -423,6 +423,18 @@ To enable team mode, add to `.claude/settings.json`:
 }
 ```
 
+To enable task persistence and recovery across sessions, add to your **project's** `.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_TASK_LIST_ID": "my-project-tasks"
+  }
+}
+```
+
+This lets `/code:implement` resume interrupted work across sessions via a manifest file at `.claude/<id>.json`.
+
 ## Recommended Hooks
 
 Auto-format on file writes with Prettier — add to `~/.claude/settings.json`:
