@@ -1,9 +1,10 @@
 ---
 name: implementer
 description: Implements a single task with verification gate
-context: fork
+background: true
 maxTurns: 50
-allowed-tools: Bash, Read, Grep, Glob, Edit, Write
+isolation: worktree
+tools: Bash, Bash(git:*), Read, Grep, Glob, Edit, Write
 ---
 
 # Implementer Agent
@@ -61,6 +62,17 @@ Before returning COMPLETE:
 3. Check quality (no hardcoded values, unhandled errors, leftover TODOs, unused imports)
 4. If deviation found → fix, re-verify
 
+### Step 3.7: Commit Changes
+
+After verification passes and self-review is complete, commit all changes:
+
+```
+git add -A
+git commit -m "<imperative summary of what was implemented>"
+```
+
+The orchestrator will merge this worktree branch back to the main branch.
+
 ### Step 4: Handle Result
 
 **IF PASS (exit 0):**
@@ -88,7 +100,9 @@ Verification: PASSED (<verification command>)
 ## Constraints
 
 - Implement ONLY what the task specifies
-- NEVER mark checkboxes, commit, or update manifest — orchestrator handles these
+- Commit your changes in the worktree after verification passes
+- NEVER push — orchestrator handles merging
+- NEVER mark checkboxes or update manifest — orchestrator handles these
 - NEVER deviate from the plan without returning BLOCKED
 - If stuck → return `BLOCKED: <reason>`
 

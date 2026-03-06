@@ -11,9 +11,6 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
 |                    CLAUDE CODE + PLUGINS FLOW                     |
 +------------------------------------------------------------------+
 
-  YOU (Developer A)                          COLLEAGUE (Developer B)
-  ================                          ======================
-
   1. PLAN + CREATE TASKS
   +-----------------------------------+
   | /code:plan-issue                  |  <-- code-et plugin
@@ -28,7 +25,7 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | Shift+Tab (Plan Mode)     |  <-- Claude Code native
   | + TaskCreate (native)     |
   +---------------------------+
-              |
+            |
   2. IMPLEMENT
   +-----------------------------------+
   | /code:implement                   |  <-- code-et plugin
@@ -49,33 +46,18 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   |                                   |
   |   /simplify (auto, end)           |  <-- Official plugin
   +-----------------------------------+
-              |
-  3. PR
-  +---------------------------+
-  | /commit-push-pr           |  <-- commit-commands plugin
-  | - Commits remaining       |     4. REVIEW
-  | - Pushes branch           |     +--------------------+
-  | - Creates PR on GitHub    | --> | /code-review       | <-- Official
-  +---------------------------+     | - Multi-agent      |
-                                    | - Approve/request  |
-                                    +--------------------+
-                                             |
-  5. PULL                            Merge on GitHub
-  +---------------------------+              |
-  | git pull origin main      | <------------+
-  +---------------------------+
 
-  wt = git worktree    bg = background agent
+  wt = git worktree (always-on)    bg = background agent
 ```
 
 ### Git Branch Flow
 
 ```
-  main ---------.---------------------------*--- (merged, pull)
-                 \                         /
-                  feature/my-feature -*--*--PR
-                                      ^  ^
-                                    task commits
+  main ---------.---------------*---
+                 \             /
+                  feature/x -*--*
+                              ^  ^
+                            task commits
 ```
 
 ### Plugin Stack
@@ -95,7 +77,6 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | - /code:plan-issue (LSP research → tasks)    |
   | - /code:implement  (orchestrator+subagents)  |
   | - /code:setup      (stack detection)         |
-  | - /code:pr         (GitHub PRs)              |
   | - /code:cleanup    (CLAUDE.md organization)  |
   | - /code:bun-init   (project scaffolding)     |
   +----------------------------------------------+
@@ -289,7 +270,6 @@ After installation, these skills are available:
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — orchestrator + parallel implementers in worktrees
 - `/code:setup` — detect stack, generate settings
-- `/code:pr` — create GitHub PR
 - `/code:cleanup` — refactor CLAUDE.md
 - `/code:bun-init` — scaffold Bun + Next.js project
 
@@ -314,7 +294,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see implement, setup, cleanup, pr, and bun-init.
+After installation, verify skills are available by typing `/code:` — you should see implement, setup, cleanup, and bun-init.
 
 ## Local Development
 
@@ -326,7 +306,7 @@ claude --plugin-dir /path/to/code-et/code-et-implementer
 
 This loads all commands, agents, and hooks directly from disk. Works from any project folder — hook scripts resolve via `${CLAUDE_PLUGIN_ROOT}`.
 
-Verify: type `/code:` and confirm all 7 skills appear.
+Verify: type `/code:` and confirm all skills appear.
 
 ## Prerequisites
 
@@ -372,7 +352,6 @@ bun dev
 | `/code:plan-issue` | Research codebase with LSP, plan feature, create native tasks with file:line refs and dependencies                                                              |
 | `/code:setup`      | Detects project stack and generates `.claude/settings.json` with permissions                                                                                    |
 | `/code:implement`  | Picks up native tasks. Subagent mode (default): orchestrator + parallel implementers in worktrees. Team mode (`--team`): Agent Swarm with distributed teammates |
-| `/code:pr`         | Creates GitHub PR with auto-generated description from branch commits                                                                                           |
 | `/code:cleanup`    | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                                                        |
 | `/code:bun-init`   | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                                                             |
 
@@ -401,41 +380,50 @@ This auto-detects the stack and configures `.claude/settings.json` permissions.
 
 ## Configuration
 
+### Settings (`~/.claude/settings.json`)
+
+All environment variables go in the `env` block of your settings file:
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1",
+    "CLAUDE_CODE_TASK_LIST_ID": "my-project-tasks",
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+  }
+}
+```
+
+| Variable                               | Purpose                                              |
+| -------------------------------------- | ---------------------------------------------------- |
+| `ENABLE_LSP_TOOL`                      | Set to `"1"` to enable LSP (required for LSP plugins) |
+| `CLAUDE_CODE_TASK_LIST_ID`             | Scoped task list name for persistence across sessions |
+| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | Set to `"1"` to enable Agent Swarm team mode          |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`      | Context auto-compact threshold (default: 70)          |
+
+Task persistence lets `/code:implement` resume interrupted work across sessions via a manifest file at `.claude/<id>.json`.
+
 ### Execution Modes
 
 `/code:implement` runs in subagent mode by default (orchestrator + parallel implementers in worktrees). Pass `--team` to use Agent Swarm team mode instead.
 
-### Environment Variables
+### LSP Setup (optional, recommended)
 
-| Variable                               | Where                          | Purpose                              |
-| -------------------------------------- | ------------------------------ | ------------------------------------ |
-| `CLAUDE_CODE_TASK_LIST_ID`             | `.claude/settings.json`        | Scoped task list name                |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`      | `.claude-plugin/settings.json` | Auto-compact threshold (default: 70) |
-| `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | `.claude/settings.json`        | Set to `1` to enable Agent Swarm     |
+LSP powers `/code:plan-issue` deep research (goToDefinition, findReferences, hover). Three things needed:
 
-To enable team mode, add to `.claude/settings.json`:
+1. **Enable LSP tool** — add `ENABLE_LSP_TOOL: "1"` to env in `~/.claude/settings.json` (must be `"1"`, not `"true"`)
+2. **Install LSP plugins:**
+   - `typescript-lsp` — for TS/JS (detects tsconfig.json)
+   - `pyright-lsp` — for Python (detects pyproject.toml)
+   - `rust-analyzer-lsp` — for Rust (detects Cargo.toml)
+3. **Language server binaries in $PATH:**
+   - `typescript-language-server` — `npm i -g typescript-language-server`
+   - `pyright` / `pyright-langserver` — `npm i -g pyright`
 
-```json
-{
-  "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
-  }
-}
-```
+The env var gates the feature; plugins configure the connection; binaries do the work. Without LSP, `/code:plan-issue` falls back to Grep/Read (works but less precise).
 
-To enable task persistence and recovery across sessions, add to your **project's** `.claude/settings.json`:
-
-```json
-{
-  "env": {
-    "CLAUDE_CODE_TASK_LIST_ID": "my-project-tasks"
-  }
-}
-```
-
-This lets `/code:implement` resume interrupted work across sessions via a manifest file at `.claude/<id>.json`.
-
-## Recommended Hooks
+### Recommended Hooks
 
 Auto-format on file writes with Prettier — add to `~/.claude/settings.json`:
 
