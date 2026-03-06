@@ -2,6 +2,16 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.18.2] - 2026-03-06
+
+### Fixed
+
+- Prevent implement command from entering plan mode — added explicit "No Plan Mode" instruction so it proceeds directly to launching the orchestrator
+
+### Added
+
+- "When to use" note in README — helps users understand when to reach for code-et vs. vanilla Claude Code
+
 ## [1.18.1] - 2026-03-06
 
 ### Fixed

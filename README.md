@@ -4,6 +4,8 @@ Team development workflow powered by Claude Code + plugins.
 
 Bun + Next.js project using task-driven development — no GitHub issues, pure Claude Code task workflow.
 
+> **When to use code-et:** Complex features with 3+ tasks, dependencies, or parallel execution. For simple 1-2 file changes, vanilla Claude Code (plan mode or direct prompting) works great on its own.
+
 ## Workflow
 
 ```

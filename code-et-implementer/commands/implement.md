@@ -7,6 +7,10 @@ argument-hint: [--team]
 
 # Implement from Tasks
 
+## CRITICAL: No Plan Mode
+
+**NEVER enter plan mode.** Do NOT call EnterPlanMode or ExitPlanMode. Do NOT write or update a plan. Proceed directly to loading tasks and launching the orchestrator.
+
 ## Step 1: Load Tasks (Two-Source)
 
 ### 1a: Check native TaskList
