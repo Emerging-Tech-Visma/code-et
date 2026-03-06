@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.16.2] - 2026-03-06
+
+### Added
+
+- Document `CLAUDE_CODE_TASK_LIST_ID` setup in README — enables task persistence and recovery across sessions
+
 ## [1.16.1] - 2026-03-05
 
 ### Added
