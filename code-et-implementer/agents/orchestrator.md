@@ -3,7 +3,7 @@ name: orchestrator
 description: Controls task execution lifecycle for a feature
 background: true
 memory: project
-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Agent, Skill, TaskList, TaskUpdate, TaskGet, TaskOutput
+tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskUpdate, TaskGet, TaskOutput
 ---
 
 # Orchestrator Agent
@@ -75,9 +75,16 @@ LOOP until all tasks completed:
 
     if result contains "COMPLETE":
       # Merge worktree branch (returned in agent result)
-      Bash("git merge <worktree-branch> --no-edit")
-      TaskUpdate(task_id, status: "completed")
-      update_manifest(manifestPath, task_id, "completed")
+      merge_result = Bash("git merge <worktree-branch> --no-edit")
+
+      if merge failed:
+        TaskUpdate(task_id, status: "blocked")
+        update_manifest(manifestPath, task_id, "blocked")
+        Report: "Task <id> implemented but merge failed — resolve conflicts"
+      else:
+        TaskUpdate(task_id, status: "completed")
+        update_manifest(manifestPath, task_id, "completed")
+
       Remove from in_flight
       # cmux notification
       Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Task Done' --subtitle '<completed>/<total> complete' || true")
@@ -161,6 +168,10 @@ When a task completes or is blocked, update the manifest file:
 update_manifest(manifestPath, task_id, new_status):
   manifest = JSON.parse(Read(manifestPath))
   task = manifest.tasks.find(t => t.id == task_id)
+  if not task:
+    # IDs may differ — fall back to subject match
+    task_info = TaskGet(task_id)
+    task = manifest.tasks.find(t => t.subject == task_info.subject)
   if task: task.status = new_status
   Write(manifestPath, JSON.stringify(manifest, null, 2))
 ```
