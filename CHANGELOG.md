@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.18.3] - 2026-03-07
+
+### Added
+
+- Auto-create feature branch in `/code:implement` — if on `main`, derives a branch name from the first task subject and checks it out before spawning the orchestrator (prevents accidental pushes to main)
+
 ## [1.18.2] - 2026-03-06
 
 ### Fixed

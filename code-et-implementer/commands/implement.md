@@ -85,6 +85,18 @@ task_payload = JSON.stringify({
 })
 ```
 
+## Step 1.5: Ensure Feature Branch
+
+Before spawning the orchestrator, ensure work happens on a feature branch — not main.
+
+1. Get current branch: `git branch --show-current`
+2. If already on a non-main branch (e.g. `feature/*`, `fix/*`, `chore/*`) → continue as-is
+3. If on `main` → create and checkout a feature branch:
+   - Derive name from first task subject: slugify it (lowercase, replace spaces/special chars with hyphens, trim), prefix with `feature/`
+   - Example: task "Add user authentication" → `feature/add-user-authentication`
+   - `git checkout -b feature/<slug>`
+4. Report: "Working on branch: `<branch-name>`"
+
 ## Step 2: Choose Execution Mode
 
 Parse `$ARGUMENTS` for flags: `--team`.
