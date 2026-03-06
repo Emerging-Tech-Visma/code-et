@@ -2,6 +2,25 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.17.0] - 2026-03-06
+
+### Changed
+
+- `/code:plan-issue` is now fully non-interactive — evaluates approaches internally, no user prompts required
+- Remove standalone mode from `/code:implement` — always delegates to subagent orchestrator (even for 1-2 tasks)
+- Orchestrator poll interval increased from 5s to 10s with minimal output (logs only state changes)
+- Orchestrator auto-compacts at 50% context (was 70%) with checkpoint file for state recovery
+
+### Added
+
+- cmux notifications in skill orchestration layer: plan complete, implement started, task done, all complete
+- Orchestrator checkpoint file (`.claude/orchestrator-checkpoint.json`) preserves in-flight state across compactions
+
+### Removed
+
+- `AskUserQuestion` from `/code:plan-issue` allowed-tools — no longer needed
+- Standalone mode (Step 3a) from `/code:implement` — subagent mode handles all cases
+
 ## [1.16.2] - 2026-03-06
 
 ### Added
