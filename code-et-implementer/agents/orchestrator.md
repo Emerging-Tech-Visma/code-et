@@ -153,6 +153,7 @@ After each task completes, merge the worktree branch back: `Bash("git merge <wor
 
 ## Rules
 
+- **NEVER enter plan mode** — do NOT call EnterPlanMode, ExitPlanMode, or write/update plans. Tasks are already planned; execute them directly.
 - **NEVER implement code yourself** — always spawn implementer
 - **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 5)
 - **Poll every 10 seconds** for completion detection

@@ -99,6 +99,7 @@ Verification: PASSED (<verification command>)
 
 ## Constraints
 
+- **NEVER enter plan mode** — do NOT call EnterPlanMode, ExitPlanMode, or write/update plans. Your task is already planned; just implement it.
 - Implement ONLY what the task specifies
 - Commit your changes in the worktree after verification passes
 - NEVER push — orchestrator handles merging
