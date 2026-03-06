@@ -2,6 +2,14 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.18.1] - 2026-03-06
+
+### Fixed
+
+- Add `TaskCreate` to orchestrator tools — needed for restoring tasks on startup
+- Add merge error handling in orchestrator poll loop — failed merges now mark task as "blocked" instead of silently proceeding
+- Fix `update_manifest()` to fall back to subject match when task IDs differ between manifest and native TaskList
+
 ## [1.18.0] - 2026-03-06
 
 ### Changed
