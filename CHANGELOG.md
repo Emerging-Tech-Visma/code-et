@@ -2,6 +2,20 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.19.1] - 2026-03-07
+
+### Changed
+
+- Increase max concurrent implementer agents from 5 to 14
+- Pass `metadata.files` scope to implementer prompt — agents now only modify listed files
+- Add `OUT_OF_SCOPE_FILE` failure mode to implementer — returns BLOCKED instead of editing unrelated files
+- Reinforce scope enforcement in implementer input spec and SCOPE_CREEP anti-pattern
+
+### Fixed
+
+- Implementers wandering outside task scope, editing files not in the task's file list
+- Excessive token burn from implementers re-analyzing entire codebase instead of focusing on scoped files
+
 ## [1.19.0] - 2026-03-07
 
 ### Added

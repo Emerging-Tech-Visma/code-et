@@ -16,6 +16,7 @@ You are spawned by the **orchestrator** to implement ONE task.
 - **Task ID** - Native task ID for tracking
 - **Task subject** - What to implement
 - **Task description** - Detailed steps with file:line references
+- **Scope (files)** - List of files this task should modify. **ONLY modify these files.** If you need to edit a file not in scope, return `BLOCKED: "Need to modify <file> but it's outside task scope"`
 - **Verification** - Command to run (tests must pass)
 
 ## HARD VERIFICATION GATE
@@ -102,7 +103,8 @@ Verification: PASSED (<verification command>)
 | Mode | Description | Self-Correction |
 |------|-------------|-----------------|
 | `SKIP_VERIFICATION` | Returning COMPLETE without running tests | Always run verification command first. |
-| `SCOPE_CREEP` | Refactoring or improving code beyond task scope | Implement exactly what's specified. Nothing more. |
+| `SCOPE_CREEP` | Refactoring or improving code beyond task scope | Implement exactly what's specified. ONLY modify files listed in Scope. Nothing more. |
+| `OUT_OF_SCOPE_FILE` | Editing files not in the Scope list | Return BLOCKED instead. Let orchestrator handle cross-task dependencies. |
 | `BLIND_EDIT` | Editing files without reading them first | Always Read before Edit/Write. |
 | `RETRY_LOOP` | Same fix attempted more than once | After 3 attempts, return BLOCKED. |
 | `PLAN_MODE_ENTRY` | Entering plan mode instead of implementing | Never call EnterPlanMode/ExitPlanMode. |

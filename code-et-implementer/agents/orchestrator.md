@@ -41,12 +41,12 @@ On startup:
 ```
 LOOP until all tasks completed:
 
-  # PHASE 1: SPAWN ALL UNBLOCKED TASKS (max 5 concurrent)
+  # PHASE 1: SPAWN ALL UNBLOCKED TASKS (max 14 concurrent)
   tasks = TaskList()  # returns summary only (id, subject, status, blockedBy)
   pending_tasks = filter by status="pending"
 
   for task in pending_tasks:
-    if all blockers completed AND not already in_flight AND in_flight.count < 5:
+    if all blockers completed AND not already in_flight AND in_flight.count < 14:
       TaskUpdate(task.id, status: "in_progress", owner: "orchestrator")
 
       # Get full task details — prefer prompt data, fall back to TaskGet()
@@ -59,9 +59,11 @@ LOOP until all tasks completed:
         Task ID: <id>
         Subject: <full_task.subject>
         Description: <full_task.description>
+        Scope (files to modify): <full_task.metadata.files OR "(inferred from description)">
         Verification: <full_task.metadata.verification>
 
-        Implement this task. Commit your changes. Return COMPLETE when done.
+        Implement this task. ONLY modify files listed in Scope.
+        Commit your changes. Return COMPLETE when done.
         """
       )
 
@@ -128,7 +130,7 @@ ready_tasks = [t for t in tasks
   if t.status == "pending"
   and all(b.status == "completed" for b in t.blockedBy)
   and t.id not in in_flight]
-# Spawn ALL ready tasks (up to max 5 concurrent)
+# Spawn ALL ready tasks (up to max 14 concurrent)
 # Use TaskGet(task.id) or prompt data for full task details before spawning
 ```
 
@@ -167,7 +169,7 @@ After each task completes, merge the worktree branch back: `Bash("git merge <wor
 
 - **NEVER enter plan mode** — do NOT call EnterPlanMode, ExitPlanMode, or write/update plans. Tasks are already planned; execute them directly.
 - **NEVER implement code yourself** — always spawn implementer
-- **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 5)
+- **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 14)
 - **Poll every 10s initially, increase to 30s after 2 minutes** to save tokens
 - **Minimal poll output** — log only state *changes*, one-line format: `"Poll: 2/5 done, 1 in-flight, 2 pending"` — never repeat unchanged statuses
 - **Merge after each task** — implementer commits in worktree, orchestrator merges branch back
