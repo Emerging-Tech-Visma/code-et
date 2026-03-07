@@ -8,7 +8,7 @@
   },
   "spinnerTipsOverride": [
     "Press ctrl+t to view task progress",
-    "Orchestrator spawns up to 5 parallel implementers",
+    "Orchestrator spawns up to 14 parallel implementers",
     "Use --team for Agent Swarm mode on complex features",
     "Each implementer must pass verification before completing",
     "Run /commit-push-pr when all tasks are done",
