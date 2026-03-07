@@ -36,15 +36,27 @@ if [ -n "$LAST_MSG" ]; then
   fi
 fi
 
-# Detect test command
-detect_test_cmd() {
+# Detect quality gates (tests + lint + typecheck)
+detect_quality_gates() {
+  local gates=""
+
   if [ -f "package.json" ]; then
-    if grep -q '"test"' package.json; then
-      if command -v bun &> /dev/null; then
-        echo "bun test"
-      else
-        echo "npm test"
+    local runner="npm"
+    command -v bun &> /dev/null && runner="bun"
+
+    _add_gate() {
+      if grep -q "\"$1\"" package.json; then
+        local cmd="$runner ${2:-run $1}"
+        gates="${gates:+$gates && }$cmd"
       fi
+    }
+
+    _add_gate "test" "$runner test"
+    _add_gate "lint"
+    _add_gate "typecheck"
+
+    if [ -n "$gates" ]; then
+      echo "$gates"
       return
     fi
   fi
@@ -71,7 +83,7 @@ detect_test_cmd() {
   echo ""
 }
 
-TEST_CMD=$(detect_test_cmd)
+TEST_CMD=$(detect_quality_gates)
 
 if [ -z "$TEST_CMD" ]; then
   echo "{\"info\": \"No test command detected — verification skipped\"}"
