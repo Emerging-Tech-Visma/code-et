@@ -2,6 +2,22 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.19.0] - 2026-03-07
+
+### Added
+
+- Named failure mode tables in orchestrator and implementer agents — explicit anti-patterns with self-correction actions
+- Cost awareness rule in orchestrator — batch tasks, avoid trivial re-spawns
+- Adaptive polling — 10s initially, 30s after 2 minutes to reduce token burn
+- Quality gates in `run-tests.sh` — detects and runs lint + typecheck alongside tests
+- Pre-compact hook re-injects manifest summary + checkpoint context after compaction
+- Plan-issue now uses built-in `LSP` tool instead of nonexistent MCP LSP tools — agents always use LSP for code navigation
+
+### Changed
+
+- Consolidated 4 separate jq calls into single invocation in pre-compact hook
+- Extracted `_add_gate()` helper in run-tests.sh to eliminate copy-paste bun/npm detection
+
 ## [1.18.4] - 2026-03-07
 
 ### Added
