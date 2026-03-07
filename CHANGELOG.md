@@ -2,6 +2,20 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.20.0] - 2026-03-07
+
+### Changed
+
+- Remove `Grep` and `Glob` tools from orchestrator — prevents codebase exploration that leads to direct implementation
+- Remove `Edit` tool from implement command — launcher should never edit files
+- Add mandatory "First Action" section to orchestrator — forces immediate implementer spawning, no source file reading
+- Rewrite cost awareness rule — removed "batch small tasks" which contradicted "always spawn implementer"
+- Strengthen orchestrator identity as pure coordinator: spawn agents → poll → merge → repeat
+
+### Fixed
+
+- Root cause of orchestrator implementing code directly: had exploration tools + ambiguous cost rule that encouraged bypassing implementer agents
+
 ## [1.19.2] - 2026-03-07
 
 ### Fixed
