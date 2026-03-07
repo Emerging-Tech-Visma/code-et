@@ -1,6 +1,6 @@
 ---
 background: true
-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Edit, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
+tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
 description: Start implementation from pending tasks
 argument-hint: [--team]
 ---
