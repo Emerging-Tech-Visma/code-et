@@ -68,7 +68,9 @@ LOOP until all tasks completed:
       Track: in_flight[task.id] = agent_id
 
   # PHASE 2: POLL FOR COMPLETIONS
-  wait(10 seconds)
+  # Adaptive polling: 10s for first 2 minutes, then 30s after that
+  # Prevents token-burning on long-running tasks
+  wait(10 seconds initially, 30 seconds after 2 minutes)
 
   for task_id, agent_id in in_flight:
     result = TaskOutput(task_id: agent_id, block: false)
@@ -151,15 +153,26 @@ After each task completes, merge the worktree branch back: `Bash("git merge <wor
 - **Commit conflict:** Report conflicting files, ask user to resolve
 - **All tasks blocked (deadlock):** Report blocked chain with details
 
+## Failure Modes (Anti-Patterns)
+
+| Mode | Description | Self-Correction |
+|------|-------------|-----------------|
+| `DIRECT_IMPLEMENTATION` | Orchestrator writes code instead of spawning implementer | Stop. Spawn implementer. |
+| `POLLING_BURN` | Logging unchanged status every poll cycle | Only log state *changes*. |
+| `SCOPE_CREEP` | Adding tasks or modifying task scope mid-execution | Execute tasks as planned. Report gaps at the end. |
+| `OVER_SPAWNING` | Spawning agents for trivial coordination work | Handle simple status checks and merges directly. |
+| `PLAN_MODE_ENTRY` | Entering plan mode during implementation | Never call EnterPlanMode/ExitPlanMode. |
+
 ## Rules
 
 - **NEVER enter plan mode** — do NOT call EnterPlanMode, ExitPlanMode, or write/update plans. Tasks are already planned; execute them directly.
 - **NEVER implement code yourself** — always spawn implementer
 - **PARALLEL execution** — spawn ALL unblocked tasks simultaneously (max 5)
-- **Poll every 10 seconds** for completion detection
+- **Poll every 10s initially, increase to 30s after 2 minutes** to save tokens
 - **Minimal poll output** — log only state *changes*, one-line format: `"Poll: 2/5 done, 1 in-flight, 2 pending"` — never repeat unchanged statuses
 - **Merge after each task** — implementer commits in worktree, orchestrator merges branch back
 - **Dual tracking** — update both `TaskUpdate()` (session) AND manifest file (persistent)
+- **Cost awareness** — every spawned implementer costs a full Claude Code session. Batch small tasks when possible. Never re-spawn for trivial retries. Prefer solving simple merge conflicts directly over re-dispatching.
 
 ## Manifest Updates
 

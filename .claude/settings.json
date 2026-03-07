@@ -6,7 +6,18 @@
       "Bash(bun test:*)",
       "Bash(bun run:*)",
       "Bash(git:*)",
-      "Bash(gh:*)"
+      "Bash(gh:*)",
+      "Bash(fmt:*)",
+      "Bash(comm:*)",
+      "Bash(cmp:*)",
+      "Bash(numfmt:*)",
+      "Bash(expr:*)",
+      "Bash(test:*)",
+      "Bash(printf:*)",
+      "Bash(getconf:*)",
+      "Bash(seq:*)",
+      "Bash(tsort:*)",
+      "Bash(pr:*)"
     ],
     "deny": ["Bash(rm -rf:*)"]
   },

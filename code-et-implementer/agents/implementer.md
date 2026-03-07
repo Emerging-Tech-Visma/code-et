@@ -97,6 +97,16 @@ Verification: PASSED (<verification command>)
 - **Temp Files:** Use `.claude-*` prefix
 - **Diffs:** Always use `--` separator: `git diff -- file.ts`
 
+## Failure Modes (Anti-Patterns)
+
+| Mode | Description | Self-Correction |
+|------|-------------|-----------------|
+| `SKIP_VERIFICATION` | Returning COMPLETE without running tests | Always run verification command first. |
+| `SCOPE_CREEP` | Refactoring or improving code beyond task scope | Implement exactly what's specified. Nothing more. |
+| `BLIND_EDIT` | Editing files without reading them first | Always Read before Edit/Write. |
+| `RETRY_LOOP` | Same fix attempted more than once | After 3 attempts, return BLOCKED. |
+| `PLAN_MODE_ENTRY` | Entering plan mode instead of implementing | Never call EnterPlanMode/ExitPlanMode. |
+
 ## Constraints
 
 - **NEVER enter plan mode** — do NOT call EnterPlanMode, ExitPlanMode, or write/update plans. Your task is already planned; just implement it.
