@@ -12,18 +12,17 @@ fi
 MANIFEST=".claude/${CLAUDE_CODE_TASK_LIST_ID:-code-et-tasks}.json"
 MANIFEST_SUMMARY=""
 if [ -f "$MANIFEST" ] && command -v jq &>/dev/null; then
-  TOTAL=$(jq '.tasks | length' "$MANIFEST" 2>/dev/null || echo "?")
-  COMPLETED=$(jq '[.tasks[] | select(.status == "completed")] | length' "$MANIFEST" 2>/dev/null || echo "?")
-  PENDING=$(jq '[.tasks[] | select(.status == "pending")] | length' "$MANIFEST" 2>/dev/null || echo "?")
-  IN_PROGRESS=$(jq '[.tasks[] | select(.status == "in_progress")] | length' "$MANIFEST" 2>/dev/null || echo "?")
-  MANIFEST_SUMMARY="Tasks: ${COMPLETED}/${TOTAL} done, ${IN_PROGRESS} in-flight, ${PENDING} pending"
+  MANIFEST_SUMMARY=$(jq -r '
+    (.tasks | length) as $total |
+    ([.tasks[] | select(.status == "completed")] | length) as $done |
+    ([.tasks[] | select(.status == "in_progress")] | length) as $wip |
+    ([.tasks[] | select(.status == "pending")] | length) as $pend |
+    "Tasks: \($done)/\($total) done, \($wip) in-flight, \($pend) pending"
+  ' "$MANIFEST" 2>/dev/null || echo "")
 fi
 
 # Re-inject checkpoint if it exists
-CHECKPOINT="null"
-if [ -f ".claude/orchestrator-checkpoint.json" ]; then
-  CHECKPOINT=$(cat .claude/orchestrator-checkpoint.json)
-fi
+CHECKPOINT=$(cat .claude/orchestrator-checkpoint.json 2>/dev/null || echo "null")
 
 echo "{\"pre_compact\": \"Context compacting — restore state from manifest and checkpoint\", \"branch\": \"$BRANCH\", \"timestamp\": \"$DATE\", \"manifest_summary\": \"$MANIFEST_SUMMARY\", \"checkpoint\": $CHECKPOINT}"
 

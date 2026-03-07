@@ -1,5 +1,5 @@
 ---
-tools: Read, Write, Grep, Glob, Bash, TaskCreate, TaskUpdate, TaskList, TaskGet, mcp__typescript-lsp__*, mcp__pyright-lsp__*, mcp__rust-analyzer-lsp__*
+tools: Read, Write, Grep, Glob, Bash, LSP, TaskCreate, TaskUpdate, TaskList, TaskGet
 description: Research codebase with LSP precision, plan feature, create native tasks
 argument-hint: [feature-description] [@spec-file]
 ---
@@ -45,32 +45,27 @@ Evaluate approaches internally, pick the best one based on:
 
 Log the decision: `"Approach: <name> — <1-line reason>"`
 
-## Phase 0.8: Detect Stack → Select LSP
+## Phase 0.8: LSP is Available
 
-Detect the project stack by checking for marker files:
+The built-in `LSP` tool supports TypeScript, Python, and Rust out of the box. **Always use it** — do not fall back to Grep/Read for code navigation when LSP can answer the question.
 
-| Check                                  | Stack      | LSP tools                   |
-| -------------------------------------- | ---------- | --------------------------- |
-| `tsconfig.json` or `package.json`      | TypeScript | `mcp__typescript-lsp__*`    |
-| `pyproject.toml` or `requirements.txt` | Python     | `mcp__pyright-lsp__*`       |
-| `Cargo.toml`                           | Rust       | `mcp__rust-analyzer-lsp__*` |
+The `LSP` tool auto-detects the language server from the file extension. Just call it with the right file path and operation. Available operations:
 
-```
-Glob("tsconfig.json") → TypeScript
-Glob("pyproject.toml") OR Glob("requirements.txt") → Python
-Glob("Cargo.toml") → Rust
-```
-
-For mixed projects (e.g. TS frontend + Python backend), use all detected LSPs.
-If no LSP marker found, skip LSP phases and use Grep/Read only.
+- `goToDefinition` — find where a symbol is defined
+- `findReferences` — find all usages of a symbol
+- `hover` — get type info and documentation
+- `documentSymbol` — list all symbols in a file
+- `workspaceSymbol` — search symbols across the workspace
+- `goToImplementation` — find interface implementations
+- `incomingCalls` / `outgoingCalls` — trace call hierarchy
 
 ## Phase 1: LSP Deep Research
 
-Using the detected LSP, trace the code paths relevant to the chosen approach:
+Use the `LSP` tool to trace the code paths relevant to the chosen approach:
 
-1. **Find entry points** — `go_to_definition` on key symbols from Phase 0.7
-2. **Trace references** — `find_references` to understand usage patterns and blast radius
-3. **Inspect types** — `hover` on interfaces, types, and function signatures
+1. **Find entry points** — `LSP(operation: "goToDefinition")` on key symbols from Phase 0.7
+2. **Trace references** — `LSP(operation: "findReferences")` to understand usage patterns and blast radius
+3. **Inspect types** — `LSP(operation: "hover")` on interfaces, types, and function signatures
 4. **Map data flow** — follow the chain: entry → processing → storage/output
 
 Build a mental model of exactly which files, functions, and lines need changes.
@@ -100,7 +95,7 @@ Before presenting the plan, verify each task has:
 - [ ] Clear success criteria (what "done" looks like)
 - [ ] Anti-patterns noted (from Phase 0.6 rules, if any)
 
-If any task is missing these → go back and research more with LSP.
+If any task is missing these → go back and research more with `LSP` tool.
 
 ## Phase 3: Create Tasks
 

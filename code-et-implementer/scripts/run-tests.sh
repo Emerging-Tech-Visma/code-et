@@ -41,27 +41,20 @@ detect_quality_gates() {
   local gates=""
 
   if [ -f "package.json" ]; then
-    if grep -q '"test"' package.json; then
-      if command -v bun &> /dev/null; then
-        gates="bun test"
-      else
-        gates="npm test"
+    local runner="npm"
+    command -v bun &> /dev/null && runner="bun"
+
+    _add_gate() {
+      if grep -q "\"$1\"" package.json; then
+        local cmd="$runner ${2:-run $1}"
+        gates="${gates:+$gates && }$cmd"
       fi
-    fi
-    if grep -q '"lint"' package.json; then
-      if command -v bun &> /dev/null; then
-        gates="${gates:+$gates && }bun run lint"
-      else
-        gates="${gates:+$gates && }npm run lint"
-      fi
-    fi
-    if grep -q '"typecheck"' package.json; then
-      if command -v bun &> /dev/null; then
-        gates="${gates:+$gates && }bun run typecheck"
-      else
-        gates="${gates:+$gates && }npm run typecheck"
-      fi
-    fi
+    }
+
+    _add_gate "test" "$runner test"
+    _add_gate "lint"
+    _add_gate "typecheck"
+
     if [ -n "$gates" ]; then
       echo "$gates"
       return
