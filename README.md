@@ -257,6 +257,9 @@ Open Claude Code and run:
 
 ```
 /plugin marketplace add Emerging-Tech-Visma/code-et
+
+# Pin to a specific version:
+/plugin marketplace add Emerging-Tech-Visma/code-et@v1.18.4
 ```
 
 Then install the plugin:

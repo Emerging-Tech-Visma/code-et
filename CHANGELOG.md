@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.18.4] - 2026-03-07
+
+### Added
+
+- Document `@ref` version-pinning syntax in README install section — users can now pin to a specific version with `/plugin marketplace add Emerging-Tech-Visma/code-et@v1.18.4`
+
 ## [1.18.3] - 2026-03-07
 
 ### Added
