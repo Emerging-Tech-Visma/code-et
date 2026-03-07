@@ -69,7 +69,6 @@ for t in pending:
   full_tasks.append(full)
 
 task_payload = JSON.stringify({
-  "manifestPath": ".claude/${CLAUDE_CODE_TASK_LIST_ID}.json",
   "tasks": [
     {
       "id": t.id,
@@ -141,7 +140,7 @@ Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify
 
 ## Step 3b: Team Mode (Agent Swarm)
 
-Become the **team lead**. Spawn N teammates where N = number of independent pending tasks (capped at 8).
+Become the **team lead**. Spawn N teammates where N = number of independent pending tasks (capped at 14).
 
 Each teammate receives this prompt:
 
@@ -152,7 +151,7 @@ You are a teammate implementing tasks from the task list.
 <task_payload>
 
 1. Read CLAUDE.md for project rules
-2. Run TaskList to find a pending task with no blockers (tasks are pre-loaded above)
+2. Find a pending task with no blockers from the task data above
 3. Claim it: TaskUpdate(taskId, status: 'in_progress', owner: '<your-name>')
 4. Implement the task using metadata.files as guidance
 5. Run the verification command from metadata.verification
