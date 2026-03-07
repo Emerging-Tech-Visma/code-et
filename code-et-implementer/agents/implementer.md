@@ -4,7 +4,7 @@ description: Implements a single task with verification gate
 background: true
 maxTurns: 50
 isolation: worktree
-tools: Bash, Bash(git:*), Read, Grep, Glob, Edit, Write
+tools: Bash, Bash(git:*), Read, Grep, Glob, Edit, Write, LSP
 ---
 
 # Implementer Agent
@@ -37,6 +37,8 @@ You are spawned by the **orchestrator** to implement ONE task.
 ## Execution
 
 ### Step 1: Read Before Modify
+
+**Prefer LSP over Grep** for code navigation — use `goToDefinition`, `findReferences`, and `hover` to understand code structure before implementing. Fall back to Grep/Glob for non-LSP-supported languages.
 
 **ALWAYS** read files before modifying:
 

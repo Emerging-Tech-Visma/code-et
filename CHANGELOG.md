@@ -2,6 +2,25 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.21.0] - 2026-03-07
+
+### Changed
+
+- **Rewrite orchestrator as pure agent spawner** — tools stripped to `Bash(git:*), Agent, TaskOutput, TaskUpdate` only. No Read, Write, or Task management tools. Orchestrator physically cannot implement code directly.
+- Remove manifest file management from orchestrator — all state tracked in conversation context, no checkpoint files
+- Remove TaskCreate, TaskList, TaskGet from orchestrator — task data passed in prompt, no runtime task discovery
+- Bump team mode cap from 8 to 14 concurrent teammates
+
+### Added
+
+- LSP tool for implementer agent — enables `goToDefinition`, `findReferences`, and `hover` for precise code navigation during implementation
+- LSP guidance in implementer instructions — prefer LSP over Grep for code structure exploration
+
+### Fixed
+
+- Root cause of `DIRECT_IMPLEMENTATION` — orchestrator had Read/Write tools which enabled it to read/edit source files instead of spawning implementer agents
+- Tasks not closing after completion — simplified orchestrator no longer fights with manifest sync and blockedBy chain management
+
 ## [1.20.0] - 2026-03-07
 
 ### Changed
