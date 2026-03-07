@@ -2,6 +2,15 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [1.19.2] - 2026-03-07
+
+### Fixed
+
+- Orchestrator implementing code directly instead of spawning implementer subagents — burns main session tokens
+- Added hard enforcement: orchestrator may only Read/Write manifest and checkpoint JSON, never source files
+- Strengthened `DIRECT_IMPLEMENTATION` failure mode with explicit file extension blocklist
+- Updated spinner tip to reflect max 14 concurrent implementers
+
 ## [1.19.1] - 2026-03-07
 
 ### Changed
