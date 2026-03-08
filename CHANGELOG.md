@@ -2,6 +2,13 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.3.0] - 2026-03-08
+
+### Fixed
+
+- **Background agent mode ignored** — Claude was dumping all tasks into a single agent instead of spawning one per task. Made mode selection rules explicit with CRITICAL enforcement note
+- **`/simplify` runs after implement** — re-added `Skill("simplify")` call in wrap-up step with `Skill` added to allowed-tools
+
 ## [2.2.2] - 2026-03-08
 
 ### Fixed

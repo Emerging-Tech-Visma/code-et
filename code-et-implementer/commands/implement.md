@@ -1,6 +1,6 @@
 ---
 background: true
-tools: Bash, Bash(gh:*), Bash(git:*), Read, Grep, Glob, Agent, TaskCreate, TaskList, TaskGet, TaskUpdate
+tools: Bash, Bash(gh:*), Bash(git:*), Read, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
 description: Implement pending tasks with parallel agents
 argument-hint: [task-id]
 ---
@@ -53,13 +53,13 @@ If both sources empty → error: "No pending tasks. Run /code:plan-issue first."
 
 ## Step 3: Choose Execution Mode
 
-Analyze tasks and choose the best mode:
+Count pending tasks and apply these rules **exactly** — do NOT override:
 
-| Mode | When | How |
-|------|------|-----|
-| **Inline** | 1 task, or 2 simple tasks (no deps, ≤2 files each) | Implement directly in this session |
-| **Background agents** | 2-5 independent tasks | Spawn agents with `isolation: "worktree"`, wait for notifications |
-| **Agent swarm** | 5+ tasks, `--team` flag, or complex cross-cutting work | Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` |
+- **1 task** (or 2 with no deps and ≤2 files each) → **Inline mode**
+- **2-5 independent tasks** → **Background agent mode** (one agent PER task)
+- **5+ tasks** or `--team` flag → **Agent swarm mode**
+
+**CRITICAL: Background agent mode means spawning MULTIPLE agents — one per task. Do NOT put all tasks into a single agent. Each agent gets exactly ONE task.**
 
 ## Step 4: Execute
 
@@ -109,7 +109,8 @@ Monitor via `TaskList()` every 15s. Deadlock if nothing in_progress but pending 
 ## Step 5: Wrap Up
 
 After all tasks complete:
-1. Report summary: tasks completed, branch name
+1. Run `Skill("simplify")` to review and clean up changed code
+2. Report summary: tasks completed, branch name
 3. `"Run /code:pr to create a pull request."`
 
 ```
