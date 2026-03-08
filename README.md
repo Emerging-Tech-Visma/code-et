@@ -44,10 +44,12 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | - code-review      (PR review + /simplify)   |
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
-  | code-et plugin (3 commands)                  |
+  | code-et plugin (5 commands)                  |
   | - /code:plan-issue (LSP research → tasks)    |
   | - /code:implement  (parallel agents)         |
   | - /code:pr         (GitHub PR creation)      |
+  | - /code:setup      (stack detection + config)|
+  | - /code:cleanup    (CLAUDE.md + memory tidy) |
   +----------------------------------------------+
 ```
 
@@ -307,6 +309,8 @@ bun dev
 | `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies                              |
 | `/code:implement`  | Execute tasks. Inline (1-2), background agents in worktrees (2-5), or agent swarm (5+ / `--team`)                |
 | `/code:pr`         | Auto-generate PR description from branch diff, push, and create GitHub PR                                        |
+| `/code:setup`      | Detect project stack, generate `settings.json` permissions and deployment scripts                                 |
+| `/code:cleanup`    | Refactor CLAUDE.md and auto-memory for progressive disclosure, move rules to `.claude/rules/`                    |
 
 ### Official plugins
 
