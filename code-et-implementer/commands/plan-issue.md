@@ -18,11 +18,13 @@ Log: `"Approach: <name> — <1-line reason>"`
 
 ## Phase 2: LSP Deep Research
 
-HARD RULE: Every `file:line` in a task MUST come from an LSP call. Grep/Glob find files, LSP provides lines.
+**MANDATORY — DO NOT SKIP.** You MUST call LSP before creating any tasks. Every `file:line` in a task MUST come from an LSP call. Grep/Glob find files, LSP provides exact line numbers.
 
-For EACH target file:
+For EACH target file identified in Phase 1:
 1. `LSP(operation: "documentSymbol")` — get symbols with exact line numbers
 2. `LSP(operation: "findReferences")` on key symbols — understand blast radius
+
+**If you skip this phase, the tasks will have wrong line numbers and agents will waste tokens searching.**
 
 ### Parallel mode (3+ independent areas)
 
@@ -78,6 +80,7 @@ manifest = {
   "tasks": [{ id, subject, description, status, metadata, blockedBy, blocks } for each]
 }
 
+Bash("mkdir -p .claude")
 Write(".claude/${CLAUDE_CODE_TASK_LIST_ID}.json", JSON.stringify(manifest, null, 2))
 ```
 

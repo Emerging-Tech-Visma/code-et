@@ -2,6 +2,13 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.2.1] - 2026-03-08
+
+### Fixed
+
+- **LSP skipped during planning** — strengthened Phase 2 enforcement from "HARD RULE" to "MANDATORY — DO NOT SKIP" with consequence warning so Claude doesn't skip LSP and create tasks with wrong line numbers
+- **Manifest write fails** — added `mkdir -p .claude` before writing manifest file (`.claude/` directory may not exist in target projects)
+
 ## [2.2.0] - 2026-03-08
 
 ### Fixed
