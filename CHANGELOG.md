@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.3.1] - 2026-03-08
+
+### Changed
+
+- **Stronger parallel agent example** — background agent mode now shows explicit example with 3 separate Agent calls in one message, making it unambiguous that each task gets its own agent
+
 ## [2.3.0] - 2026-03-08
 
 ### Fixed

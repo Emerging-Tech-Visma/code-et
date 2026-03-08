@@ -73,22 +73,18 @@ Implement task(s) directly. For each task:
 
 ### Background agent mode
 
-For each independent task, spawn:
+Spawn ALL agents in a **single message** — one Agent call per task, all in parallel:
 
 ```
-Agent(
-  subagent_type: "general-purpose",
-  isolation: "worktree",
-  prompt: """
-  Implement this task, then commit and return COMPLETE or BLOCKED.
+// 3 tasks = 3 Agent calls in ONE message. NEVER combine tasks into 1 agent.
+Agent(subagent_type: "general-purpose", isolation: "worktree", run_in_background: true,
+  prompt: "Implement: <task 1 subject>\n<task 1 description>\nFiles: <files>\nVerify: <verify>\nCommit and return COMPLETE or BLOCKED.")
 
-  Task: <subject>
-  Description: <description>
-  Files: <metadata.files>
-  Verify: <metadata.verification>
-  """,
-  run_in_background: true
-)
+Agent(subagent_type: "general-purpose", isolation: "worktree", run_in_background: true,
+  prompt: "Implement: <task 2 subject>\n<task 2 description>\nFiles: <files>\nVerify: <verify>\nCommit and return COMPLETE or BLOCKED.")
+
+Agent(subagent_type: "general-purpose", isolation: "worktree", run_in_background: true,
+  prompt: "Implement: <task 3 subject>\n<task 3 description>\nFiles: <files>\nVerify: <verify>\nCommit and return COMPLETE or BLOCKED.")
 ```
 
 When each agent completes (automatic notification — NO polling):
