@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "1.21.0",
-  "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view).",
+  "version": "2.0.0",
+  "description": "Task-driven coding workflow: plan with LSP, implement with parallel agents in worktree isolation.",
   "author": {
     "name": "Kennet Kusk"
   },
@@ -12,8 +12,7 @@
     "github",
     "task-driven",
     "agents",
-    "orchestrator",
     "verification",
-    "auto-compact"
+    "worktree"
   ]
 }

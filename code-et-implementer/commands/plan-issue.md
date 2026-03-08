@@ -1,6 +1,6 @@
 ---
-tools: Read, Write, Grep, Glob, Bash, LSP, TaskCreate, TaskUpdate, TaskList, TaskGet
-description: Research codebase with LSP precision, plan feature, create native tasks
+tools: Read, Grep, Glob, Bash, LSP, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet
+description: Research codebase with LSP, create implementation tasks
 argument-hint: [feature-description] [@spec-file]
 ---
 
@@ -8,163 +8,84 @@ argument-hint: [feature-description] [@spec-file]
 
 Research codebase with LSP precision, design implementation approach, create native tasks with `file:line` references.
 
-## Phase 0.5: Load Existing Plan
+## Phase 1: Load Context
 
-Check for a spec or plan document in this order:
+1. **Spec file** — if `$ARGUMENTS` contains `@<path>`, Read that file. Else check `SPEC.md`, then `plans/*.md`
+2. **Code rules** — `Glob(".claude/rules/*.md")` → Read each. These are constraints for the plan
+3. **Codebase research** — Grep/Glob to find relevant modules, patterns, similar features. Pick the approach with minimal blast radius that follows existing patterns
 
-1. `@file` argument (if `$ARGUMENTS` contains `@<path>`) → Read that file
-2. `SPEC.md` in project root
-3. `plans/*.md` files
+Log: `"Approach: <name> — <1-line reason>"`
 
-If found → use as requirements context alongside the feature description from `$ARGUMENTS`.
-If not found → use only the feature description from `$ARGUMENTS`.
+## Phase 2: LSP Deep Research
 
-## Phase 0.6: Load Code Quality Rules
+HARD RULE: Every `file:line` in a task MUST come from an LSP call. Grep/Glob find files, LSP provides lines.
 
-Check `.claude/rules/` for project-specific rules:
+For EACH target file:
+1. `LSP(operation: "documentSymbol")` — get symbols with exact line numbers
+2. `LSP(operation: "findReferences")` on key symbols — understand blast radius
 
-```
-Glob(".claude/rules/*.md") → Read each rule file
-```
+### Parallel mode (3+ independent areas)
 
-Incorporate rules as constraints for the implementation plan (anti-patterns to avoid, conventions to follow).
-
-## Phase 0.7: Explore Approaches
-
-Research the codebase to identify 2-3 viable implementation approaches:
+Spawn up to 3 Explore agents for independent subsystems:
 
 ```
-Glob + Grep → find relevant modules, patterns, existing similar features
-Read → understand current architecture
+Agent(subagent_type: "Explore", prompt: "Research <area>. Use LSP on: [files]. Report symbols, lines, deps.", run_in_background: true)
 ```
 
-Evaluate approaches internally, pick the best one based on:
-- Alignment with existing codebase patterns
-- Minimal blast radius (fewest files/lines changed)
-- Least risk of regressions
+WAIT for completion notifications — do NOT poll or sleep.
 
-Log the decision: `"Approach: <name> — <1-line reason>"`
+## Phase 3: Break into Tasks
 
-## Phase 0.8: LSP is Available
+- **Max 3 files per task** — keeps each focused and reviewable
+- **Order by dependency** — foundational changes first
+- Each task independently verifiable
 
-The built-in `LSP` tool supports TypeScript, Python, and Rust out of the box. **Always use it** — do not fall back to Grep/Read for code navigation when LSP can answer the question.
+### Quality gate — verify each task has:
 
-The `LSP` tool auto-detects the language server from the file extension. Just call it with the right file path and operation. Available operations:
+- Specific `file:line` references from LSP (NOT from Read/Grep)
+- A verification command (test, lint, type-check, or build)
+- Clear success criteria
 
-- `goToDefinition` — find where a symbol is defined
-- `findReferences` — find all usages of a symbol
-- `hover` — get type info and documentation
-- `documentSymbol` — list all symbols in a file
-- `workspaceSymbol` — search symbols across the workspace
-- `goToImplementation` — find interface implementations
-- `incomingCalls` / `outgoingCalls` — trace call hierarchy
+If any line number wasn't from LSP, call `LSP(operation: "documentSymbol")` NOW.
 
-## Phase 1: LSP Deep Research
-
-Use the `LSP` tool to trace the code paths relevant to the chosen approach:
-
-1. **Find entry points** — `LSP(operation: "goToDefinition")` on key symbols from Phase 0.7
-2. **Trace references** — `LSP(operation: "findReferences")` to understand usage patterns and blast radius
-3. **Inspect types** — `LSP(operation: "hover")` on interfaces, types, and function signatures
-4. **Map data flow** — follow the chain: entry → processing → storage/output
-
-Build a mental model of exactly which files, functions, and lines need changes.
-
-## Phase 1.5: Create Precise Task Specs
-
-Read every file that will be modified. For each change:
-
-- Note the exact `file:line` range
-- Describe what changes at that location
-- Identify dependencies between changes
-
-## Phase 2: Break into Tasks
-
-Split the implementation into ordered tasks:
-
-- **Max 3 files per task** — keeps each task focused and reviewable
-- **Order by dependency** — foundational changes first, dependent changes later
-- Each task must be independently verifiable
-
-## Phase 2.5: Quality Gate
-
-Before presenting the plan, verify each task has:
-
-- [ ] Specific `file:line` references (not just file names)
-- [ ] A verification command (test, lint, type-check, or build)
-- [ ] Clear success criteria (what "done" looks like)
-- [ ] Anti-patterns noted (from Phase 0.6 rules, if any)
-
-If any task is missing these → go back and research more with `LSP` tool.
-
-## Phase 3: Create Tasks
-
-For each task, create with full metadata:
+## Phase 4: Create Tasks
 
 ```
 TaskCreate(
   subject: "<imperative title>",
-  description: "<detailed steps with file:line refs>\n\nVerification: <command>\nExpected outcome: <what success looks like>",
+  description: "<steps with file:line refs>\n\nVerification: <command>\nExpected: <success criteria>",
   metadata: {
-    "verification": "<specific test/build command>",
+    "verification": "<test/build command>",
     "expected_outcome": "<what success looks like>",
     "files": ["src/path/file.ts:15-30", "src/other.ts:42"]
   }
 )
 ```
 
-After all tasks are created, set dependencies:
+Set dependencies: `TaskUpdate(taskId: "<later>", addBlockedBy: ["<earlier>"])`
 
-```
-TaskUpdate(taskId: "<later-task>", addBlockedBy: ["<earlier-task>"])
-```
+## Phase 5: Persist Manifest
 
-## Phase 3.5: Persist Tasks to Manifest
-
-After all tasks and dependencies are set, serialize them to a JSON manifest file for cross-session persistence.
-
-The manifest path is derived from the `CLAUDE_CODE_TASK_LIST_ID` env var: `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`
-
-**Important:** `TaskList()` only returns summary fields (id, subject, status, owner, blockedBy). Use `TaskGet(taskId)` for each task to retrieve full details (description, metadata, blocks).
+Serialize tasks to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json` for cross-session persistence:
 
 ```
 task_summaries = TaskList()
-full_tasks = []
-for summary in task_summaries:
-  full = TaskGet(summary.id)
-  full_tasks.append(full)
+full_tasks = [TaskGet(t.id) for t in task_summaries]
 
 manifest = {
   "version": 1,
-  "createdAt": "<current ISO timestamp>",
-  "tasks": [
-    {
-      "id": task.id,
-      "subject": task.subject,
-      "description": task.description,
-      "status": task.status,
-      "metadata": task.metadata,
-      "blockedBy": task.blockedBy,
-      "blocks": task.blocks
-    }
-    for task in full_tasks
-  ]
+  "createdAt": "<ISO timestamp>",
+  "tasks": [{ id, subject, description, status, metadata, blockedBy, blocks } for each]
 }
 
 Write(".claude/${CLAUDE_CODE_TASK_LIST_ID}.json", JSON.stringify(manifest, null, 2))
 ```
 
-Each `/code:plan-issue` run **replaces** the manifest (fresh plan).
-
 ## Output
 
-After all tasks and dependencies are created:
-
 ```
-"Plan complete: N tasks created and saved to .claude/<task-list-id>.json. Run /code:implement to start."
+"Plan complete: N tasks created and saved to .claude/<id>.json. Run /code:implement to start."
 ```
-
-Send cmux notification:
 
 ```
 Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Plan Complete' --subtitle 'N tasks created' || true")

@@ -2,6 +2,46 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.0.0] - 2026-03-08
+
+### Changed
+
+- **Radical architecture simplification** — delete orchestrator and implementer agents entirely. The main session IS the orchestrator. 3 layers → 1 flat layer.
+- **3 commands only** — `plan-issue`, `implement`, `pr`. Deleted: `workspace`, `cleanup`, `setup`, `bun-init`
+- **3 execution modes in implement** — inline (1-2 tasks), background agents with worktree isolation (2-5 tasks), agent swarm (5+ tasks / `--team`). Claude chooses automatically.
+- **2 hooks only** — `PreToolUse` (inject rules) and `SubagentStop` (verify gate). Deleted 6 hooks: Stop, SessionEnd, PreCompact, ConfigChange, TeammateIdle, TaskCompleted
+- **Simplified CLAUDE.md** — trimmed from 67 lines to 30 lines, 3-command reference table
+- **~55k fewer tokens per run** — no orchestrator prompt, no polling loop, no checkpoint management
+
+### Removed
+
+- `agents/orchestrator.md` — main session handles coordination directly
+- `agents/implementer.md` — agents get focused 15-line prompts instead of 129-line framework
+- `scripts/check-context.sh` — Stop hook removed
+- `scripts/session-end.sh` — SessionEnd hook removed
+- `scripts/config-validate.sh` — ConfigChange hook removed
+- `scripts/pre-compact.sh` — PreCompact hook removed
+- `scripts/teammate-idle.sh` — TeammateIdle hook removed
+- `scripts/team-task-complete.sh` — TaskCompleted hook removed
+- `commands/workspace.md` — cmux workspace setup (use cmux directly)
+- `commands/cleanup.md` — CLAUDE.md refactoring (one-off task)
+- `commands/setup.md` — stack detection (one-off task)
+- `commands/bun-init.md` — project scaffolding (one-off task)
+- Orchestrator guard from `inject-rules.sh` — no orchestrator to guard
+
+## [1.22.0] - 2026-03-08
+
+### Fixed
+
+- **LSP enforcement in plan-issue** — `file:line` references now MUST come from LSP calls, not Read/Grep output. Previous advisory "always use LSP" replaced with hard rule + quality gate enforcement
+- **Parallel agent support in plan-issue** — add Agent tool, enable Explore agent spawning for multi-area research with anti-polling guardrails
+
+### Changed
+
+- Phase 0.8 rewritten as MANDATORY constraint (was advisory "always use it")
+- Phase 1 simplified with LSP-first workflow and parallel mode for 3+ subsystems
+- Phase 2.5 quality gate now enforces LSP-sourced line numbers before task creation
+
 ## [1.21.0] - 2026-03-07
 
 ### Changed
