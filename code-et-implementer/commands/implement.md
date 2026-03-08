@@ -109,8 +109,7 @@ Monitor via `TaskList()` every 15s. Deadlock if nothing in_progress but pending 
 ## Step 5: Wrap Up
 
 After all tasks complete:
-1. Run `/simplify`
-2. Report summary: tasks completed, branch name
+1. Report summary: tasks completed, branch name
 3. `"Run /code:pr to create a pull request."`
 
 ```

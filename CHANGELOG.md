@@ -2,6 +2,16 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.2.0] - 2026-03-08
+
+### Fixed
+
+- **SubagentStop hook dead** — matcher `"implementer"` never fired since v2.0.0 deleted that agent type. Changed to `""` to match all subagents, restoring verification gate for background agents
+- **Stale `/simplify` reference** in implement.md — removed (belongs to code-review plugin, not code-et)
+- **README stale references** — updated hook example from `code:implementer` to `""`, added setup/cleanup to all 5 command listings
+- **package.json version** stuck at 1.0.0, synced to 2.2.0
+- **Script comments** updated from "Implementer" to "Agent" in verify-gate.sh and run-tests.sh
+
 ## [2.1.1] - 2026-03-08
 
 ### Fixed

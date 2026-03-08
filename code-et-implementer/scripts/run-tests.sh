@@ -2,7 +2,7 @@
 # Shared verification gate — detects and runs project test command
 # Usage: run-tests.sh <caller-label> <failure-exit-code>
 # Args:
-#   $1 = caller label ("Implementer" or "Teammate") for log messages
+#   $1 = caller label ("Agent" or "Teammate") for log messages
 #   $2 = exit code on test failure (1 for SubagentStop, 2 for TaskCompleted)
 
 CALLER="${1:-Agent}"

@@ -76,7 +76,9 @@ my-repo/                              ← GitHub repo root
 │   ├── commands/                     ← slash commands (skills)
 │   │   ├── plan-issue.md
 │   │   ├── implement.md
-│   │   └── pr.md
+│   │   ├── pr.md
+│   │   ├── setup.md
+│   │   └── cleanup.md
 │   ├── hooks/
 │   │   └── hooks.json                ← lifecycle hooks
 │   └── scripts/                      ← shell scripts invoked by hooks
@@ -170,6 +172,8 @@ Each `.md` file in `code-et-implementer/commands/` becomes a skill callable as `
 | `plan-issue.md`  | `/code:plan-issue` |
 | `implement.md`   | `/code:implement`  |
 | `pr.md`          | `/code:pr`         |
+| `setup.md`       | `/code:setup`      |
+| `cleanup.md`     | `/code:cleanup`    |
 
 Commands are markdown files with instructions that Claude follows when the skill is invoked.
 
@@ -182,7 +186,7 @@ Commands are markdown files with instructions that Claude follows when the skill
   "hooks": {
     "SubagentStop": [
       {
-        "matcher": "code:implementer",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
@@ -229,6 +233,8 @@ After installation, these skills are available:
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — parallel agents in worktree isolation
 - `/code:pr` — auto-generated GitHub PR
+- `/code:setup` — detect project stack, generate settings + deployment scripts
+- `/code:cleanup` — refactor CLAUDE.md, organize rules, clean auto-memory
 
 To update after new commits are pushed:
 
@@ -251,7 +257,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, and pr.
+After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, pr, setup, and cleanup.
 
 ## Local Development
 
