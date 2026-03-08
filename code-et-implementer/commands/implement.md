@@ -1,17 +1,15 @@
 ---
 background: true
-tools: Bash, Bash(gh:*), Bash(git:*), Read, Write, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
-description: Start implementation from pending tasks
-argument-hint: [--team]
+tools: Bash, Bash(gh:*), Bash(git:*), Read, Grep, Glob, Agent, TaskCreate, TaskList, TaskGet, TaskUpdate
+description: Implement pending tasks with parallel agents
+argument-hint: [task-id]
 ---
 
 # Implement from Tasks
 
-## CRITICAL: No Plan Mode
+**NEVER enter plan mode.** Proceed directly to loading tasks and executing.
 
-**NEVER enter plan mode.** Do NOT call EnterPlanMode or ExitPlanMode. Do NOT write or update a plan. Proceed directly to loading tasks and launching the orchestrator.
-
-## Step 1: Load Tasks (Two-Source)
+## Step 1: Load Tasks
 
 ### 1a: Check native TaskList
 
@@ -19,159 +17,102 @@ argument-hint: [--team]
 TaskList() → find all pending tasks
 ```
 
-If pending tasks exist → use them (same-session). Continue to Step 1d.
+If pending tasks exist → use them. Skip to Step 1c.
 
 ### 1b: Fall back to manifest file
 
-If no pending tasks in TaskList, read the manifest:
+If no pending tasks, read `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`:
 
 ```
-manifest_path = ".claude/${CLAUDE_CODE_TASK_LIST_ID}.json"
-Read(manifest_path) → parse JSON
+Read(manifest_path) → parse JSON → filter status != "completed"
 ```
 
-Filter for tasks where `status != "completed"`. If pending tasks found → restore them:
+Restore tasks:
 
 ```
 id_mapping = {}
 for task in manifest.tasks where status != "completed":
-  result = TaskCreate(
-    subject: task.subject,
-    description: task.description,
-    metadata: task.metadata
-  )
-  id_mapping[task.id] = result.new_id
+  result = TaskCreate(subject, description, metadata)
+  id_mapping[old_id] = new_id
 
-# Restore dependencies using mapped IDs
-for task in manifest.tasks where status != "completed":
-  if task.blockedBy has entries:
-    mapped_blockers = [id_mapping[b] for b in task.blockedBy if b in id_mapping]
-    TaskUpdate(id_mapping[task.id], addBlockedBy: mapped_blockers)
+for task with blockedBy:
+  TaskUpdate(id_mapping[task.id], addBlockedBy: [id_mapping[b] for b in blockedBy])
 ```
 
-### 1c: No tasks anywhere
+If both sources empty → error: "No pending tasks. Run /code:plan-issue first."
 
-If both TaskList and manifest are empty or missing → error: "No pending tasks found. Run /code:plan-issue first."
+### 1c: Build task payload
 
-### 1d: Build task payload
+`TaskList()` returns summaries only. Use `TaskGet(taskId)` per task for full details.
 
-Build a full JSON payload of all pending tasks for prompt serialization.
+## Step 2: Ensure Feature Branch
 
-**Important:** `TaskList()` only returns summary fields (id, subject, status, owner, blockedBy). Use `TaskGet(taskId)` per task to retrieve full details (description, metadata, blocks).
+1. `git branch --show-current`
+2. If on non-main branch → continue
+3. If on `main` → `git checkout -b feature/<slug-from-first-task>`
 
-```
-task_summaries = TaskList()
-pending = [t for t in task_summaries where t.status == "pending"]
+## Step 3: Choose Execution Mode
 
-full_tasks = []
-for t in pending:
-  full = TaskGet(t.id)  # returns description, metadata, blocks, etc.
-  full_tasks.append(full)
+Analyze tasks and choose the best mode:
 
-task_payload = JSON.stringify({
-  "tasks": [
-    {
-      "id": t.id,
-      "subject": t.subject,
-      "description": t.description,
-      "status": t.status,
-      "metadata": t.metadata,
-      "blockedBy": t.blockedBy,
-      "blocks": t.blocks
-    }
-    for t in full_tasks
-  ]
-})
-```
+| Mode | When | How |
+|------|------|-----|
+| **Inline** | 1 task, or 2 simple tasks (no deps, ≤2 files each) | Implement directly in this session |
+| **Background agents** | 2-5 independent tasks | Spawn agents with `isolation: "worktree"`, wait for notifications |
+| **Agent swarm** | 5+ tasks, `--team` flag, or complex cross-cutting work | Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` |
 
-## Step 1.5: Ensure Feature Branch
+## Step 4: Execute
 
-Before spawning the orchestrator, ensure work happens on a feature branch — not main.
+### Inline mode
 
-1. Get current branch: `git branch --show-current`
-2. If already on a non-main branch (e.g. `feature/*`, `fix/*`, `chore/*`) → continue as-is
-3. If on `main` → create and checkout a feature branch:
-   - Derive name from first task subject: slugify it (lowercase, replace spaces/special chars with hyphens, trim), prefix with `feature/`
-   - Example: task "Add user authentication" → `feature/add-user-authentication`
-   - `git checkout -b feature/<slug>`
-4. Report: "Working on branch: `<branch-name>`"
+Implement task(s) directly. For each task:
+1. Read target files, implement changes following task description
+2. Run verification command from `metadata.verification`
+3. Commit: `git add <files> && git commit -m "<task subject>"`
+4. `TaskUpdate(taskId, status: "completed")`
 
-## Step 2: Choose Execution Mode
+### Background agent mode
 
-Parse `$ARGUMENTS` for flags: `--team`.
-
-If `--team` is passed but `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is not set → error:
-"Team mode requires CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1 in .claude/settings.json env."
-
-Pick execution mode:
-
-```
-pending = [t for t in full_tasks where t.status == "pending"]
-total = len(pending)
-
-if --team flag → TEAM MODE (Step 3b)
-else           → SUBAGENT MODE (Step 3a)
-```
-
-Report: `"N pending task(s). Mode: subagent|team"`
-
-## Step 3a: Subagent Mode (default)
+For each independent task, spawn:
 
 ```
 Agent(
-  subagent_type: "code:orchestrator",
+  subagent_type: "code:implementer",
+  isolation: "worktree",
   prompt: """
-  Execute all pending tasks.
-  Run /simplify when all tasks are done.
+  Implement this task, then commit and return COMPLETE or BLOCKED.
 
-  ## Task Data
-  <task_payload>
-  """
+  Task: <subject>
+  Description: <description>
+  Files: <metadata.files>
+  Verify: <metadata.verification>
+  """,
+  run_in_background: true
 )
 ```
 
-The orchestrator receives the full task payload in its prompt. It spawns implementers in worktrees, merges branches back after each task, and reports completion. Press `ctrl+t` to view progress.
+When each agent completes (automatic notification — NO polling):
+1. Merge worktree branch: `git merge <branch> --no-edit`
+2. Close task: `TaskUpdate(taskId, status: "completed")`
 
-Send cmux notification:
+If merge fails → `TaskUpdate(taskId, status: "blocked")`, report conflict.
+
+### Agent swarm mode
+
+Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. Act as team lead, spawn teammates (max 14). Each teammate:
+1. Claims a pending task via `TaskUpdate(status: "in_progress")`
+2. Implements, verifies, commits
+3. Marks `TaskUpdate(status: "completed")`, picks next task
+
+Monitor via `TaskList()` every 15s. Deadlock if nothing in_progress but pending tasks have unresolved blockers.
+
+## Step 5: Wrap Up
+
+After all tasks complete:
+1. Run `/simplify`
+2. Report summary: tasks completed, branch name
+3. `"Run /code:pr to create a pull request."`
 
 ```
-Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Implement Started' --subtitle 'N tasks → orchestrator' || true")
+Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Implement Done' --subtitle 'All tasks complete' || true")
 ```
-
-## Step 3b: Team Mode (Agent Swarm)
-
-Become the **team lead**. Spawn N teammates where N = number of independent pending tasks (capped at 14).
-
-Each teammate receives this prompt:
-
-```
-You are a teammate implementing tasks from the task list.
-
-## Task Data
-<task_payload>
-
-1. Read CLAUDE.md for project rules
-2. Find a pending task with no blockers from the task data above
-3. Claim it: TaskUpdate(taskId, status: 'in_progress', owner: '<your-name>')
-4. Implement the task using metadata.files as guidance
-5. Run the verification command from metadata.verification
-6. If pass → TaskUpdate(taskId, status: 'completed'), commit changes, pick next pending task
-7. If fail → debug (max 3 attempts), then mark as blocked and move to next task
-8. When no more pending tasks are available, report completion and exit
-```
-
-### Lead monitoring loop
-
-After spawning teammates, monitor every 15 seconds:
-
-1. `TaskList()` → check progress
-2. Log: completed / in_progress / pending counts
-3. **Deadlock detection:** if no tasks are `in_progress` AND pending tasks have unresolved blockers → alert user
-4. **All complete:** when no pending or in_progress tasks remain:
-   - Message teammates to exit
-   - Run `/simplify`
-   - Delete completed tasks
-
-## Resuming Work
-
-Run `/code:implement` again. The orchestrator (or lead) reconstructs state from TaskList.

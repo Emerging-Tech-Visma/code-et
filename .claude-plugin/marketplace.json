@@ -4,14 +4,14 @@
     "name": "Kennet Kusk"
   },
   "metadata": {
-    "description": "Task-driven coding workflow with parallel agents in worktree isolation",
-    "version": "1.21.0"
+    "description": "Task-driven coding workflow: plan with LSP, implement with parallel agents in worktree isolation",
+    "version": "2.0.0"
   },
   "plugins": [
     {
       "name": "code",
       "source": "./code-et-implementer",
-      "description": "Task-driven coding workflow with native Task tools. implement (orchestrator spawns implementer per task, ctrl+t progress view)."
+      "description": "Task-driven coding workflow: plan → implement → PR. No orchestrator overhead."
     }
   ]
 }

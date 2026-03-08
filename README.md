@@ -9,47 +9,17 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
 ## Workflow
 
 ```
-+------------------------------------------------------------------+
-|                    CLAUDE CODE + PLUGINS FLOW                     |
-+------------------------------------------------------------------+
-
-  1. PLAN + CREATE TASKS
-  +-----------------------------------+
-  | /code:plan-issue                  |  <-- code-et plugin
-  | - Detects stack (TS/Py/Rust)      |
-  | - LSP: go-to-def, refs, hover    |
-  | - Explores approaches (user pick) |
-  | - Creates tasks with file:line    |
-  +-----------------------------------+
-  |
-  OR (manual)
-  +---------------------------+
-  | Shift+Tab (Plan Mode)     |  <-- Claude Code native
-  | + TaskCreate (native)     |
-  +---------------------------+
-            |
-  2. IMPLEMENT
-  +-----------------------------------+
-  | /code:implement                   |  <-- code-et plugin
-  |                                   |
-  | Subagent mode (default):          |
-  |   Orchestrator (bg)               |
-  |   +-- Implementer 1 (wt)         |
-  |   +-- Implementer 2 (wt)         |
-  |   +-- Implementer N (wt)         |
-  |                                   |
-  | Team mode (--team):               |
-  |   Lead → Teammate 1..N            |
-  |   Each claims + implements tasks  |
-  |                                   |
-  |   Each implementer/teammate:      |
-  |   - Hard verification             |
-  |   - Auto-commit on pass           |
-  |                                   |
-  |   /simplify (auto, end)           |  <-- Official plugin
-  +-----------------------------------+
-
-  wt = git worktree (always-on)    bg = background agent
+  1. PLAN                          2. IMPLEMENT                    3. PR
+  /code:plan-issue                 /code:implement                 /code:pr
+  ┌──────────────────┐             ┌──────────────────┐            ┌────────────┐
+  │ LSP research     │             │ Inline (1-2)     │            │ Auto-desc  │
+  │ Grep/Glob files  │  ──tasks──▶ │ Background (2-5) │  ──done──▶ │ Push + PR  │
+  │ Create tasks     │             │ Swarm (5+/--team)│            │            │
+  └──────────────────┘             └──────────────────┘            └────────────┘
+                                     Each agent:
+                                     - Worktree isolation
+                                     - Verification gate
+                                     - Auto-commit on pass
 ```
 
 ### Git Branch Flow
@@ -71,16 +41,13 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   +----------------------------------------------+
   | Official Plugins                             |
   | - commit-commands  (commit, push, PR)        |
-  | - code-review      (PR review)               |
-  | - code-simplifier  (/simplify)               |
+  | - code-review      (PR review + /simplify)   |
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
-  | code-et plugin (execution engine)            |
+  | code-et plugin (3 commands)                  |
   | - /code:plan-issue (LSP research → tasks)    |
-  | - /code:implement  (orchestrator+subagents)  |
-  | - /code:setup      (stack detection)         |
-  | - /code:cleanup    (CLAUDE.md organization)  |
-  | - /code:bun-init   (project scaffolding)     |
+  | - /code:implement  (parallel agents)         |
+  | - /code:pr         (GitHub PR creation)      |
   +----------------------------------------------+
 ```
 
@@ -99,21 +66,19 @@ A marketplace repo has two levels:
 my-repo/                              ← GitHub repo root
 ├── .claude-plugin/
 │   └── marketplace.json              ← marketplace manifest (points to subdirs)
-├── code-et-implementer/                    ← plugin subdirectory
+├── code-et-implementer/              ← plugin subdirectory
 │   ├── .claude-plugin/
 │   │   ├── plugin.json               ← plugin identity (name, version)
 │   │   └── settings.json             ← permissions, env vars, spinner tips
 │   ├── CLAUDE.md                     ← instructions loaded when plugin is active
-│   ├── agents/                       ← subagent definitions
-│   │   ├── orchestrator.md
-│   │   └── implementer.md
 │   ├── commands/                     ← slash commands (skills)
+│   │   ├── plan-issue.md
 │   │   ├── implement.md
-│   │   ├── setup.md
-│   │   └── cleanup.md
+│   │   └── pr.md
 │   ├── hooks/
 │   │   └── hooks.json                ← lifecycle hooks
 │   └── scripts/                      ← shell scripts invoked by hooks
+│       ├── inject-rules.sh
 │       ├── verify-gate.sh
 │       └── run-tests.sh
 ├── README.md                         ← repo docs (not part of plugin)
@@ -127,7 +92,7 @@ my-repo/                              ← GitHub repo root
 ```bash
 # From your repo root
 mkdir -p code-et-implementer/.claude-plugin
-mkdir -p code-et-implementer/{agents,commands,hooks,scripts}
+mkdir -p code-et-implementer/{commands,hooks,scripts}
 mkdir -p .claude-plugin
 ```
 
@@ -198,28 +163,15 @@ Create `code-et-implementer/.claude-plugin/settings.json`:
 
 Each `.md` file in `code-et-implementer/commands/` becomes a skill callable as `/code:<filename>`.
 
-| File           | Skill             |
-| -------------- | ----------------- |
-| `implement.md` | `/code:implement` |
-| `setup.md`     | `/code:setup`     |
-| `cleanup.md`   | `/code:cleanup`   |
-| `pr.md`        | `/code:pr`        |
-| `bun-init.md`  | `/code:bun-init`  |
+| File             | Skill              |
+| ---------------- | ------------------ |
+| `plan-issue.md`  | `/code:plan-issue` |
+| `implement.md`   | `/code:implement`  |
+| `pr.md`          | `/code:pr`         |
 
 Commands are markdown files with instructions that Claude follows when the skill is invoked.
 
-### Step 7: Add Agents
-
-Each `.md` file in `code-et-implementer/agents/` becomes a subagent type callable as `code:<filename>`.
-
-| File              | Subagent type       |
-| ----------------- | ------------------- |
-| `orchestrator.md` | `code:orchestrator` |
-| `implementer.md`  | `code:implementer`  |
-
-Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"`.
-
-### Step 8: Add Hooks and Scripts
+### Step 7: Add Hooks and Scripts
 
 `code-et-implementer/hooks/hooks.json` defines lifecycle hooks. Scripts go in `code-et-implementer/scripts/` and are referenced via `${CLAUDE_PLUGIN_ROOT}/scripts/`:
 
@@ -243,11 +195,11 @@ Agents are spawned via the `Agent` tool with `subagent_type: "code:orchestrator"
 
 > **Tip:** Use `claude --plugin-dir ./your-plugin-dir` to test locally without installing. Hook scripts resolve via `${CLAUDE_PLUGIN_ROOT}`, and skill `.md` files can reference sibling files via `${CLAUDE_SKILL_DIR}`.
 
-### Step 9: Add Plugin CLAUDE.md
+### Step 8: Add Plugin CLAUDE.md
 
 `code-et-implementer/CLAUDE.md` contains instructions loaded when the plugin is active. This is where you document workflow rules, conventions, and project standards.
 
-### Step 10: Publish
+### Step 9: Publish
 
 Commit your plugin files, push to a branch, and create a PR. After merging to main, the marketplace is live.
 
@@ -273,10 +225,8 @@ Then install the plugin:
 After installation, these skills are available:
 
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
-- `/code:implement` — orchestrator + parallel implementers in worktrees
-- `/code:setup` — detect stack, generate settings
-- `/code:cleanup` — refactor CLAUDE.md
-- `/code:bun-init` — scaffold Bun + Next.js project
+- `/code:implement` — parallel agents in worktree isolation
+- `/code:pr` — auto-generated GitHub PR
 
 To update after new commits are pushed:
 
@@ -299,7 +249,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see implement, setup, cleanup, and bun-init.
+After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, and pr.
 
 ## Local Development
 
@@ -352,13 +302,11 @@ bun dev
 
 ### code-et plugin
 
-| Skill              | Description                                                                                                                                                     |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/code:plan-issue` | Research codebase with LSP, plan feature, create native tasks with file:line refs and dependencies                                                              |
-| `/code:setup`      | Detects project stack and generates `.claude/settings.json` with permissions                                                                                    |
-| `/code:implement`  | Picks up native tasks. Subagent mode (default): orchestrator + parallel implementers in worktrees. Team mode (`--team`): Agent Swarm with distributed teammates |
-| `/code:cleanup`    | Refactors CLAUDE.md — keeps root lean, moves details to `.claude/rules/`                                                                                        |
-| `/code:bun-init`   | Scaffolds new Bun + Next.js + Shadcn/UI project with Docker and GCP Cloud Run setup                                                                             |
+| Skill              | Description                                                                                                       |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies                              |
+| `/code:implement`  | Execute tasks. Inline (1-2), background agents in worktrees (2-5), or agent swarm (5+ / `--team`)                |
+| `/code:pr`         | Auto-generate PR description from branch diff, push, and create GitHub PR                                        |
 
 ### Official plugins
 
@@ -370,18 +318,6 @@ bun dev
 | `/code-review`     | code-review     | Multi-agent PR review — 5 parallel agents check CLAUDE.md compliance, bugs, git history, past PR comments, and code comments. Scores each finding by confidence |
 | `/frontend-design` | frontend-design | Creates distinctive, production-grade UI components with bold design direction. Avoids generic AI aesthetics                                                    |
 | `/simplify`        | code-review     | Reviews changed code for reuse, quality, and efficiency, then fixes issues found                                                                                |
-
-## Project Setup
-
-After plugins are installed, run inside the project:
-
-```bash
-claude
-# then inside Claude Code:
-/code:setup
-```
-
-This auto-detects the stack and configures `.claude/settings.json` permissions.
 
 ## Configuration
 
@@ -411,7 +347,13 @@ Task persistence lets `/code:implement` resume interrupted work across sessions 
 
 ### Execution Modes
 
-`/code:implement` runs in subagent mode by default (orchestrator + parallel implementers in worktrees). Pass `--team` to use Agent Swarm team mode instead.
+`/code:implement` auto-selects the best mode based on task count:
+
+| Mode | When | How |
+|------|------|-----|
+| Inline | 1 task, or 2 simple tasks | Implements directly in main session |
+| Background | 2-5 independent tasks | Spawns agents in worktree isolation |
+| Swarm | 5+ tasks or `--team` flag | Agent Swarm (requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) |
 
 ### LSP Setup (optional, recommended)
 
@@ -449,3 +391,37 @@ Auto-format on file writes with Prettier — add to `~/.claude/settings.json`:
   }
 }
 ```
+
+## GitHub Workflow: Multiple PRs
+
+You can run several features in parallel, each on its own branch with its own PR.
+
+### How it works
+
+```
+main ─────────────────────────────*────────*──── (deploy-ready)
+       \                         /        /
+        feature/auth ──PR #1────┘        /
+       \                                /
+        feature/dashboard ──PR #2──────┘
+```
+
+1. **Start a feature** — run `/code:plan-issue "add auth"`, then `/code:implement`. This creates a branch like `feature/add-auth` automatically.
+2. **Open a PR** — run `/code:pr`. This pushes the branch and creates a pull request on GitHub.
+3. **Start the next feature** — switch back to main (`git checkout main`), then repeat step 1 for the next feature. Each feature gets its own branch and PR.
+
+### Multiple PRs at the same time
+
+Each PR is independent. You can have 2, 5, or 10 open PRs — they don't block each other unless they change the same files.
+
+- **No conflicts** — each PR merges into main on its own. Click "Merge" on GitHub when the PR is approved.
+- **Conflicts** — if two PRs change the same file, GitHub will flag it. Merge the first PR, then update the second branch (`git merge main`) to resolve.
+
+### When does code reach production?
+
+PRs sit on GitHub until someone merges them. Nothing goes to main (and therefore production) until a PR is explicitly merged. This gives the team time to review and approve.
+
+Typical flow:
+1. PR is created → team reviews
+2. PR is approved → click "Merge pull request" on GitHub
+3. Code is now on main → ready for deploy
