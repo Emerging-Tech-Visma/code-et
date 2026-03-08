@@ -2,6 +2,14 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.1.0] - 2026-03-08
+
+### Added
+
+- Restore `/code:cleanup` skill — refactor CLAUDE.md with progressive disclosure, move rules to `.claude/rules/`, clean auto-memory
+- Restore `/code:setup` skill — detect project stack, generate `settings.json` permissions, optionally create deployment scripts
+- README updated to document all 5 commands
+
 ## [2.0.0] - 2026-03-08
 
 ### Changed
