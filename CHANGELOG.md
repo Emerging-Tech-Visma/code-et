@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.1.1] - 2026-03-08
+
+### Fixed
+
+- Fix `code:implementer` agent type not found error — background agent mode now uses `general-purpose` subagent type (the old `code:implementer` agent was removed in v2.0.0)
+
 ## [2.1.0] - 2026-03-08
 
 ### Added

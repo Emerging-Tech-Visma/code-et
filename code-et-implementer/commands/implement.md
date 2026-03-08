@@ -77,7 +77,7 @@ For each independent task, spawn:
 
 ```
 Agent(
-  subagent_type: "code:implementer",
+  subagent_type: "general-purpose",
   isolation: "worktree",
   prompt: """
   Implement this task, then commit and return COMPLETE or BLOCKED.
