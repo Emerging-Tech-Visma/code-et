@@ -15,6 +15,8 @@ Task-driven coding workflow with parallel agents in worktree isolation.
 | Plan feature | `/code:plan-issue` (LSP research → tasks) |
 | Implement tasks | `/code:implement` (parallel agents in worktrees) |
 | Create PR | `/code:pr` (auto-generated description) |
+| Setup project | `/code:setup` (stack detection + settings) |
+| Cleanup context | `/code:cleanup` (CLAUDE.md + auto-memory tidy) |
 
 ## Workflow
 

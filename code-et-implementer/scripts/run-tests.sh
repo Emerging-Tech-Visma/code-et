@@ -94,10 +94,10 @@ echo "{\"verification\": \"Running: $TEST_CMD\"}"
 
 # Run tests with 120s timeout
 if command -v timeout &> /dev/null; then
-  timeout 120 $TEST_CMD
+  timeout 120 bash -c "$TEST_CMD"
 else
   # macOS fallback: use perl for timeout
-  perl -e "alarm 120; exec @ARGV" $TEST_CMD
+  perl -e 'alarm 120; exec "bash", "-c", $ARGV[0]' "$TEST_CMD"
 fi
 
 EXIT_CODE=$?

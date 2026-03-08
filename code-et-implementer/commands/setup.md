@@ -1,5 +1,4 @@
 ---
-context: fork
 allowed-tools: Bash(ls:*), Bash(cat:*), Bash(find:*), Bash(grep:*), Bash(mkdir:*), Bash(chmod:*), Read, Write, AskUserQuestion
 description: Detect project stack, generate settings.json permissions and deployment scripts
 ---

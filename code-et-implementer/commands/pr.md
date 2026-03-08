@@ -19,7 +19,7 @@ If on main/master → Warn user to create feature branch.
 **If uncommitted changes exist:**
 
 1. Stage all changes: `git add -A`
-2. Auto-commit with: `Skill("commit-commands:commit")`
+2. Auto-commit: `git commit -m "chore: stage uncommitted changes for PR"`
 3. Continue to Step 2
 
 ## Step 2: Get Branch Diff

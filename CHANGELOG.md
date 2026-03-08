@@ -2,6 +2,15 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.2.2] - 2026-03-08
+
+### Fixed
+
+- **CLAUDE.md missing commands** — added setup and cleanup to Commands table (was only showing 3 of 5)
+- **pr.md Skill() call blocked** — replaced `Skill("commit-commands:commit")` with direct `git commit` (Skill not in allowed-tools, and depends on external plugin)
+- **run-tests.sh timeout bug** — multi-command chains (`bun test && bun run lint`) weren't fully wrapped by timeout; now uses `bash -c` to wrap the entire chain
+- **setup.md stale `context: fork`** — removed (deprecated since v1.18.0)
+
 ## [2.2.1] - 2026-03-08
 
 ### Fixed
