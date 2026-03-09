@@ -2,6 +2,11 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.4.3] - 2026-03-09
+
+### Fixed
+- **Delete `agents/implementer.md`** — Claude was auto-selecting the plugin agent as a single orchestrator instead of spawning per-task agents. Removing the file entirely prevents this; agent memory requires native agent definitions (not plugin `agents/` directory)
+
 ## [2.4.2] - 2026-03-09
 
 ### Fixed
