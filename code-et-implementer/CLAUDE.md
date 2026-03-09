@@ -14,10 +14,10 @@ Task-driven coding workflow with parallel agents in worktree isolation.
 |------|---------|
 | Plan feature | `/code:plan-issue` (LSP research → tasks) |
 | Implement tasks | `/code:implement` (parallel agents in worktrees) |
-| Cleanup context | `/code:cleanup` (CLAUDE.md + auto-memory tidy) |
 
 For commits and PRs use `commit-commands` plugin (`/commit`, `/commit-push-pr`).
 For code review use `code-review` plugin (`/code-review`, `/simplify`).
+For CLAUDE.md maintenance use `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`).
 
 ## Workflow
 

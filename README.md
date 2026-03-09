@@ -32,23 +32,89 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
                             task commits
 ```
 
-### Plugin Stack
+### How the Plugins Work Together
 
 ```
-  +----------------------------------------------+
-  | Claude Code (native)                         |
-  | - Plan Mode, TaskCreate, gh CLI, worktrees   |
-  +----------------------------------------------+
-  | Companion Plugins (official)                 |
-  | - commit-commands  (commit, push, PR)        |
-  | - code-review      (PR review + /simplify)   |
-  | - typescript-lsp   (LSP navigation)          |
-  +----------------------------------------------+
-  | code-et plugin (3 commands)                  |
-  | - /code:plan-issue (LSP research → tasks)    |
-  | - /code:implement  (parallel agents)         |
-  | - /code:cleanup    (CLAUDE.md + memory tidy) |
-  +----------------------------------------------+
+  YOU: "add dark mode support"
+   |
+   v
+  /code:plan-issue ─── uses ──▶ typescript-lsp (LSP)
+   │                             goToDefinition, findReferences
+   │                             hover for type info
+   │
+   ▼ creates tasks
+  /code:implement ─── spawns ──▶ parallel agents (worktree isolation)
+   │                             each agent: edit, test, commit
+   │
+   ▼ code ready
+  /commit-push-pr ─── runs ───▶ git commit + push + gh pr create
+   │
+   ▼ PR open
+  /code-review ─── spawns ────▶ 5 review agents in parallel
+   │                             CLAUDE.md compliance, bugs,
+   │                             git history, code quality
+   │
+   ▼ merged
+  /revise-claude-md ──────────▶ update CLAUDE.md with learnings
+```
+
+**Plugin responsibilities:**
+
+```
+  +-------------------+--------------------------------------------+
+  | Plugin            | What it does                               |
+  +-------------------+--------------------------------------------+
+  | code-et           | /plan-issue  — LSP research, create tasks  |
+  |   (this repo)     | /implement   — parallel agents in worktrees|
+  +-------------------+--------------------------------------------+
+  | commit-commands   | /commit      — auto-message git commit     |
+  |   (official)      | /commit-push-pr — branch + commit + PR     |
+  |                   | /clean_gone  — prune merged branches       |
+  +-------------------+--------------------------------------------+
+  | code-review       | /code-review — multi-agent PR review       |
+  |   (official)      | /simplify    — refactor changed code       |
+  +-------------------+--------------------------------------------+
+  | typescript-lsp    | LSP navigation for /code:plan-issue        |
+  |   (official)      | goToDefinition, findReferences, hover      |
+  +-------------------+--------------------------------------------+
+  | claude-md-mgmt    | /revise-claude-md  — update CLAUDE.md      |
+  |   (official)      | /claude-md-improver — audit & improve      |
+  +-------------------+--------------------------------------------+
+  | frontend-design   | /frontend-design — production-grade UI     |
+  |   (official)      | bold design, avoids generic AI aesthetics  |
+  +-------------------+--------------------------------------------+
+  | feature-dev       | /feature-dev — guided feature development   |
+  |   (official)      | codebase analysis + architecture focus      |
+  +-------------------+--------------------------------------------+
+  | skill-creator     | /skill-creator — create & optimize skills   |
+  |   (official)      | build skills, run evals, benchmark          |
+  +-------------------+--------------------------------------------+
+  | agent-sdk-dev     | Claude Agent SDK development helper         |
+  |   (official)      | build custom agents with Agent SDK          |
+  +-------------------+--------------------------------------------+
+```
+
+**Install all plugins:**
+
+```
+# Official plugins (from claude-plugins-official)
+/plugin install commit-commands@claude-plugins-official
+/plugin install code-review@claude-plugins-official
+/plugin install claude-md-management@claude-plugins-official
+/plugin install frontend-design@claude-plugins-official
+/plugin install feature-dev@claude-plugins-official
+/plugin install skill-creator@claude-plugins-official
+/plugin install agent-sdk-dev@claude-plugins-official
+
+# LSP plugins (install per language)
+/plugin install typescript-lsp@claude-plugins-official
+/plugin install pyright-lsp@claude-plugins-official
+/plugin install rust-analyzer-lsp@claude-plugins-official
+/plugin install swift-lsp@claude-plugins-official
+
+# code-et (from this repo)
+/plugin marketplace add Emerging-Tech-Visma/code-et
+/plugin install code@code-et
 ```
 
 ## Building a Plugin from Scratch
@@ -73,8 +139,7 @@ my-repo/                              ← GitHub repo root
 │   ├── CLAUDE.md                     ← instructions loaded when plugin is active
 │   ├── commands/                     ← slash commands (skills)
 │   │   ├── plan-issue.md
-│   │   ├── implement.md
-│   │   └── cleanup.md
+│   │   └── implement.md
 │   ├── hooks/
 │   │   └── hooks.json                ← lifecycle hooks
 │   └── scripts/                      ← shell scripts invoked by hooks
@@ -167,7 +232,6 @@ Each `.md` file in `code-et-implementer/commands/` becomes a skill callable as `
 | ---------------- | ------------------ |
 | `plan-issue.md`  | `/code:plan-issue` |
 | `implement.md`   | `/code:implement`  |
-| `cleanup.md`     | `/code:cleanup`    |
 
 Commands are markdown files with instructions that Claude follows when the skill is invoked.
 
@@ -226,8 +290,8 @@ After installation, these skills are available:
 
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — parallel agents in worktree isolation
-- `/code:cleanup` — refactor CLAUDE.md, organize rules, clean auto-memory
 
+For CLAUDE.md maintenance, use the `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`).
 For commits and PRs, use the companion `commit-commands` plugin (`/commit`, `/commit-push-pr`).
 
 To update after new commits are pushed:
@@ -251,7 +315,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, and cleanup.
+After installation, verify skills are available by typing `/code:` — you should see plan-issue and implement.
 
 ## Local Development
 
@@ -287,10 +351,15 @@ bun dev
 ```
 /plugin install commit-commands@claude-plugins-official
 /plugin install code-review@claude-plugins-official
-/plugin install typescript-lsp@claude-plugins-official
-/plugin install rust-analyzer-lsp@claude-plugins-official
-/plugin install pyright-lsp@claude-plugins-official
+/plugin install claude-md-management@claude-plugins-official
 /plugin install frontend-design@claude-plugins-official
+/plugin install feature-dev@claude-plugins-official
+/plugin install skill-creator@claude-plugins-official
+/plugin install agent-sdk-dev@claude-plugins-official
+/plugin install typescript-lsp@claude-plugins-official
+/plugin install pyright-lsp@claude-plugins-official
+/plugin install rust-analyzer-lsp@claude-plugins-official
+/plugin install swift-lsp@claude-plugins-official
 ```
 
 **code-et plugin** (add marketplace, then install):
@@ -308,7 +377,6 @@ bun dev
 | ------------------ | -------------------------------------------------------------------------------------------- |
 | `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies         |
 | `/code:implement`  | Execute tasks with parallel agents in worktree isolation                                     |
-| `/code:cleanup`    | Refactor CLAUDE.md and auto-memory for progressive disclosure                                |
 
 ### Official plugins
 
@@ -320,6 +388,10 @@ bun dev
 | `/code-review`     | code-review     | Multi-agent PR review — 5 parallel agents check CLAUDE.md compliance, bugs, git history, past PR comments, and code comments. Scores each finding by confidence |
 | `/frontend-design` | frontend-design | Creates distinctive, production-grade UI components with bold design direction. Avoids generic AI aesthetics                                                    |
 | `/simplify`        | code-review     | Reviews changed code for reuse, quality, and efficiency, then fixes issues found                                                                                |
+| `/revise-claude-md` | claude-md-management | Update CLAUDE.md with learnings from the current session                                                                                                  |
+| `/claude-md-improver` | claude-md-management | Audit and improve CLAUDE.md files — scans, evaluates quality, makes targeted updates                                                                    |
+| `/feature-dev`     | feature-dev     | Guided feature development with codebase understanding and architecture focus                                                                                   |
+| `/skill-creator`   | skill-creator   | Create new skills, modify existing ones, run evals, benchmark performance                                                                                       |
 
 ## Configuration
 
