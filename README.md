@@ -44,10 +44,9 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | - code-review      (PR review + /simplify)   |
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
-  | code-et plugin (3 commands)                  |
+  | code-et plugin (2 commands)                  |
   | - /code:plan-issue (LSP research → tasks)    |
   | - /code:implement  (parallel agents)         |
-  | - /code:cleanup    (CLAUDE.md + memory tidy) |
   +----------------------------------------------+
 ```
 
@@ -73,8 +72,7 @@ my-repo/                              ← GitHub repo root
 │   ├── CLAUDE.md                     ← instructions loaded when plugin is active
 │   ├── commands/                     ← slash commands (skills)
 │   │   ├── plan-issue.md
-│   │   ├── implement.md
-│   │   └── cleanup.md
+│   │   └── implement.md
 │   ├── hooks/
 │   │   └── hooks.json                ← lifecycle hooks
 │   └── scripts/                      ← shell scripts invoked by hooks
@@ -167,7 +165,6 @@ Each `.md` file in `code-et-implementer/commands/` becomes a skill callable as `
 | ---------------- | ------------------ |
 | `plan-issue.md`  | `/code:plan-issue` |
 | `implement.md`   | `/code:implement`  |
-| `cleanup.md`     | `/code:cleanup`    |
 
 Commands are markdown files with instructions that Claude follows when the skill is invoked.
 
@@ -226,8 +223,8 @@ After installation, these skills are available:
 
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — parallel agents in worktree isolation
-- `/code:cleanup` — refactor CLAUDE.md, organize rules, clean auto-memory
 
+For CLAUDE.md maintenance, use the `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`).
 For commits and PRs, use the companion `commit-commands` plugin (`/commit`, `/commit-push-pr`).
 
 To update after new commits are pushed:
@@ -251,7 +248,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, and cleanup.
+After installation, verify skills are available by typing `/code:` — you should see plan-issue and implement.
 
 ## Local Development
 
@@ -308,7 +305,6 @@ bun dev
 | ------------------ | -------------------------------------------------------------------------------------------- |
 | `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies         |
 | `/code:implement`  | Execute tasks with parallel agents in worktree isolation                                     |
-| `/code:cleanup`    | Refactor CLAUDE.md and auto-memory for progressive disclosure                                |
 
 ### Official plugins
 

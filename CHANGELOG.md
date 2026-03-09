@@ -2,6 +2,11 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.1.0] - 2026-03-09
+
+### Removed
+- **`/code:cleanup` command** — redundant with official `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`). code-et now ships 2 core commands: `plan-issue` and `implement`
+
 ## [3.0.0] - 2026-03-09
 
 ### Changed
