@@ -2,6 +2,11 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.4.2] - 2026-03-09
+
+### Fixed
+- **Revert `code:implementer` agent type** — plugins don't support `agents/` directory for custom agent definitions yet; reverted to `general-purpose` with `isolation: "worktree"` in Agent calls to restore one-agent-per-task behavior (was causing single orchestrator fallback)
+
 ## [2.4.1] - 2026-03-09
 
 ### Fixed

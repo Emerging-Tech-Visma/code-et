@@ -77,13 +77,13 @@ Spawn ALL agents in a **single message** — one Agent call per task, all in par
 
 ```
 // 3 tasks = 3 Agent calls in ONE message. NEVER combine tasks into 1 agent.
-Agent(subagent_type: "code:implementer", run_in_background: true,
+Agent(subagent_type: "general-purpose", isolation: "worktree", run_in_background: true,
   prompt: "Implement: <task 1 subject>\n<task 1 description>\nFiles: <files>\nVerify: <verify>\nCommit and return COMPLETE or BLOCKED.")
 
-Agent(subagent_type: "code:implementer", run_in_background: true,
+Agent(subagent_type: "general-purpose", isolation: "worktree", run_in_background: true,
   prompt: "Implement: <task 2 subject>\n<task 2 description>\nFiles: <files>\nVerify: <verify>\nCommit and return COMPLETE or BLOCKED.")
 
-Agent(subagent_type: "code:implementer", run_in_background: true,
+Agent(subagent_type: "general-purpose", isolation: "worktree", run_in_background: true,
   prompt: "Implement: <task 3 subject>\n<task 3 description>\nFiles: <files>\nVerify: <verify>\nCommit and return COMPLETE or BLOCKED.")
 ```
 
