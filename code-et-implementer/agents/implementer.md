@@ -1,6 +1,6 @@
 ---
 memory: project
-tools: Bash, Bash(git:*), Read, Write, Edit, Grep, Glob, LSP, Agent
+tools: Bash, Bash(git:*), Read, Write, Edit, Grep, Glob, LSP
 isolation: worktree
 ---
 

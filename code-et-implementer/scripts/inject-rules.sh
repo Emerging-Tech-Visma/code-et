@@ -3,7 +3,10 @@
 # This ensures subagents see project conventions even without loading rules/ directly.
 
 # Read hook input from stdin
-HOOK_INPUT=$(cat)
+HOOK_INPUT=""
+if [ ! -t 0 ]; then
+  HOOK_INPUT=$(cat)
+fi
 
 # Parse agent identity for traceability
 AGENT_ID=""
