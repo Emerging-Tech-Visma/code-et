@@ -2,6 +2,19 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.0.0] - 2026-03-09
+
+### Changed
+- **Radically simplified commands** — `plan-issue` (95→18 lines), `implement` (115→15 lines), `cleanup` (66→7 lines). Claude already knows how to use LSP, agents, and worktrees — stop over-constraining it
+- **Removed `/code:pr`** — use `commit-commands:commit-push-pr` instead (official plugin, better maintained)
+- **Removed `/code:setup`** — one-off utility, not core workflow
+- **Updated CLAUDE.md** — 3-command table, references companion plugins for commit/PR/review
+- **Updated README** — new workflow diagram (plan → implement → `/commit-push-pr`), plugin stack shows 3 commands, companion plugin references
+
+### Removed
+- `commands/pr.md` — replaced by `commit-commands` plugin
+- `commands/setup.md` — one-off utility removed from core
+
 ## [2.4.3] - 2026-03-09
 
 ### Fixed

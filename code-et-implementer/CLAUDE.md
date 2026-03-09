@@ -14,15 +14,16 @@ Task-driven coding workflow with parallel agents in worktree isolation.
 |------|---------|
 | Plan feature | `/code:plan-issue` (LSP research → tasks) |
 | Implement tasks | `/code:implement` (parallel agents in worktrees) |
-| Create PR | `/code:pr` (auto-generated description) |
-| Setup project | `/code:setup` (stack detection + settings) |
 | Cleanup context | `/code:cleanup` (CLAUDE.md + auto-memory tidy) |
+
+For commits and PRs use `commit-commands` plugin (`/commit`, `/commit-push-pr`).
+For code review use `code-review` plugin (`/code-review`, `/simplify`).
 
 ## Workflow
 
 1. `/code:plan-issue` — research codebase with LSP, create tasks with `file:line` refs
 2. `/code:implement` — execute tasks (inline, background agents, or agent swarm)
-3. `/code:pr` — commit, push, and create GitHub PR
+3. `/commit-push-pr` — commit, push, and create GitHub PR
 
 ## Task Metadata Convention
 

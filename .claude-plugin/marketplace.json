@@ -4,14 +4,14 @@
     "name": "Kennet Kusk"
   },
   "metadata": {
-    "description": "Task-driven coding workflow: plan with LSP, implement with parallel agents in worktree isolation",
-    "version": "2.4.3"
+    "description": "Plan with LSP, implement with parallel agents. Pairs with commit-commands and code-review plugins.",
+    "version": "3.0.0"
   },
   "plugins": [
     {
       "name": "code",
       "source": "./code-et-implementer",
-      "description": "Task-driven coding workflow: plan → implement → PR. No orchestrator overhead."
+      "description": "Plan with LSP, implement with parallel agents. Use commit-commands for PRs."
     }
   ]
 }
