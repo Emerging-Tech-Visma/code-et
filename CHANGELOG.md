@@ -2,6 +2,13 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.4.1] - 2026-03-09
+
+### Fixed
+- **inject-rules.sh stdin hang** — added `[ ! -t 0 ]` guard to prevent `cat` blocking on terminal input
+- **Implementer Agent recursion risk** — removed `Agent` from implementer tools list (prevents unbounded sub-agent spawning)
+- **PermissionRequest hot-path** — switched `auto-approve-readonly.sh` shebang to `#!/bin/sh` for faster process startup
+
 ## [2.4.0] - 2026-03-09
 
 ### Added
