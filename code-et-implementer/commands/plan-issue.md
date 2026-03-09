@@ -1,7 +1,7 @@
 ---
 tools: Read, Grep, Glob, Bash, LSP, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet
-description: Research codebase with LSP, create implementation tasks
-argument-hint: [feature-description] [@spec-file]
+description: "Research codebase with LSP, create implementation tasks"
+argument-hint: "[feature-description] [@spec-file]"
 ---
 
 # Plan Issue — LSP Research → Native Tasks
