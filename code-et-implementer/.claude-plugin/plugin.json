@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "2.4.3",
-  "description": "Task-driven coding workflow: plan with LSP, implement with parallel agents in worktree isolation.",
+  "version": "3.0.0",
+  "description": "Plan with LSP, implement with parallel agents. Pairs with commit-commands and code-review plugins.",
   "author": {
     "name": "Kennet Kusk"
   },

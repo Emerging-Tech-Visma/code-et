@@ -9,12 +9,12 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
 ## Workflow
 
 ```
-  1. PLAN                          2. IMPLEMENT                    3. PR
-  /code:plan-issue                 /code:implement                 /code:pr
+  1. PLAN                          2. IMPLEMENT                    3. SHIP
+  /code:plan-issue                 /code:implement                 /commit-push-pr
   ┌──────────────────┐             ┌──────────────────┐            ┌────────────┐
-  │ LSP research     │             │ Inline (1-2)     │            │ Auto-desc  │
-  │ Grep/Glob files  │  ──tasks──▶ │ Background (2-5) │  ──done──▶ │ Push + PR  │
-  │ Create tasks     │             │ Swarm (5+/--team)│            │            │
+  │ LSP research     │             │ Inline (trivial)  │           │ Auto-desc  │
+  │ Grep/Glob files  │  ──tasks──▶ │ Agents (parallel) │  ──done──▶│ Push + PR  │
+  │ Create tasks     │             │ Swarm (large)     │           │            │
   └──────────────────┘             └──────────────────┘            └────────────┘
                                      Each agent:
                                      - Worktree isolation
@@ -39,16 +39,14 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   | Claude Code (native)                         |
   | - Plan Mode, TaskCreate, gh CLI, worktrees   |
   +----------------------------------------------+
-  | Official Plugins                             |
+  | Companion Plugins (official)                 |
   | - commit-commands  (commit, push, PR)        |
   | - code-review      (PR review + /simplify)   |
   | - typescript-lsp   (LSP navigation)          |
   +----------------------------------------------+
-  | code-et plugin (5 commands)                  |
+  | code-et plugin (3 commands)                  |
   | - /code:plan-issue (LSP research → tasks)    |
   | - /code:implement  (parallel agents)         |
-  | - /code:pr         (GitHub PR creation)      |
-  | - /code:setup      (stack detection + config)|
   | - /code:cleanup    (CLAUDE.md + memory tidy) |
   +----------------------------------------------+
 ```
@@ -76,8 +74,6 @@ my-repo/                              ← GitHub repo root
 │   ├── commands/                     ← slash commands (skills)
 │   │   ├── plan-issue.md
 │   │   ├── implement.md
-│   │   ├── pr.md
-│   │   ├── setup.md
 │   │   └── cleanup.md
 │   ├── hooks/
 │   │   └── hooks.json                ← lifecycle hooks
@@ -171,8 +167,6 @@ Each `.md` file in `code-et-implementer/commands/` becomes a skill callable as `
 | ---------------- | ------------------ |
 | `plan-issue.md`  | `/code:plan-issue` |
 | `implement.md`   | `/code:implement`  |
-| `pr.md`          | `/code:pr`         |
-| `setup.md`       | `/code:setup`      |
 | `cleanup.md`     | `/code:cleanup`    |
 
 Commands are markdown files with instructions that Claude follows when the skill is invoked.
@@ -232,9 +226,9 @@ After installation, these skills are available:
 
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — parallel agents in worktree isolation
-- `/code:pr` — auto-generated GitHub PR
-- `/code:setup` — detect project stack, generate settings + deployment scripts
 - `/code:cleanup` — refactor CLAUDE.md, organize rules, clean auto-memory
+
+For commits and PRs, use the companion `commit-commands` plugin (`/commit`, `/commit-push-pr`).
 
 To update after new commits are pushed:
 
@@ -257,7 +251,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, pr, setup, and cleanup.
+After installation, verify skills are available by typing `/code:` — you should see plan-issue, implement, and cleanup.
 
 ## Local Development
 
@@ -310,13 +304,11 @@ bun dev
 
 ### code-et plugin
 
-| Skill              | Description                                                                                                       |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies                              |
-| `/code:implement`  | Execute tasks. Inline (1-2), background agents in worktrees (2-5), or agent swarm (5+ / `--team`)                |
-| `/code:pr`         | Auto-generate PR description from branch diff, push, and create GitHub PR                                        |
-| `/code:setup`      | Detect project stack, generate `settings.json` permissions and deployment scripts                                 |
-| `/code:cleanup`    | Refactor CLAUDE.md and auto-memory for progressive disclosure, move rules to `.claude/rules/`                    |
+| Skill              | Description                                                                                  |
+| ------------------ | -------------------------------------------------------------------------------------------- |
+| `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies         |
+| `/code:implement`  | Execute tasks with parallel agents in worktree isolation                                     |
+| `/code:cleanup`    | Refactor CLAUDE.md and auto-memory for progressive disclosure                                |
 
 ### Official plugins
 
@@ -417,7 +409,7 @@ main ─────────────────────────
 ```
 
 1. **Start a feature** — run `/code:plan-issue "add auth"`, then `/code:implement`. This creates a branch like `feature/add-auth` automatically.
-2. **Open a PR** — run `/code:pr`. This pushes the branch and creates a pull request on GitHub.
+2. **Open a PR** — run `/commit-push-pr`. This pushes the branch and creates a pull request on GitHub.
 3. **Start the next feature** — switch back to main (`git checkout main`), then repeat step 1 for the next feature. Each feature gets its own branch and PR.
 
 ### Multiple PRs at the same time
