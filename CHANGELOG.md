@@ -2,6 +2,15 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [2.4.0] - 2026-03-09
+
+### Added
+- **PermissionRequest hook** — auto-approves Read, Grep, Glob, LSP for agents (no more permission prompts for read-only ops)
+- **TaskCompleted hook** — cmux desktop notification + agent attribution on task completion
+- **InstructionsLoaded hook** — diagnostic logging of loaded instruction files
+- **agent_id/agent_type tracking** — inject-rules.sh and run-tests.sh now log agent identity for traceability
+- **Agent memory (experimental)** — `agents/implementer.md` with `memory: project` for persistent agent memory across sessions; `implement.md` uses `subagent_type: "code:implementer"` with worktree isolation in agent definition
+
 ## [2.3.1] - 2026-03-08
 
 ### Changed

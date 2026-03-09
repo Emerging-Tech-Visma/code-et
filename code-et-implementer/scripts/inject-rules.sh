@@ -5,6 +5,14 @@
 # Read hook input from stdin
 HOOK_INPUT=$(cat)
 
+# Parse agent identity for traceability
+AGENT_ID=""
+AGENT_TYPE=""
+if [ -n "$HOOK_INPUT" ] && command -v jq &>/dev/null; then
+  AGENT_ID=$(echo "$HOOK_INPUT" | jq -r '.agent_id // empty' 2>/dev/null)
+  AGENT_TYPE=$(echo "$HOOK_INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
+fi
+
 RULES_DIR=".claude/rules"
 
 if [ ! -d "$RULES_DIR" ]; then
@@ -32,5 +40,8 @@ fi
 # Escape for JSON: backslashes, quotes, newlines, tabs
 ESCAPED=$(printf '%s' "$RULES" | sed 's/\\/\\\\/g; s/"/\\"/g; s/	/\\t/g' | awk '{printf "%s\\n", $0}')
 
-echo "{\"additionalContext\": \"Project rules:\\n${ESCAPED}\"}"
+AGENT_LABEL=""
+[ -n "$AGENT_ID" ] && AGENT_LABEL="[agent:${AGENT_ID}${AGENT_TYPE:+/$AGENT_TYPE}] "
+
+echo "{\"additionalContext\": \"${AGENT_LABEL}Project rules:\\n${ESCAPED}\"}"
 exit 0

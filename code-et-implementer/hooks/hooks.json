@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "PermissionRequest": [
+      {
+        "matcher": "Read|Grep|Glob|LSP",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/auto-approve-readonly.sh",
+            "timeout": 2000
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "matcher": "",
@@ -20,6 +32,30 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/verify-gate.sh",
             "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "TaskCompleted": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task-complete.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "InstructionsLoaded": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-instructions.sh",
+            "timeout": 2000
           }
         ]
       }

@@ -14,25 +14,33 @@ if [ ! -t 0 ]; then
   HOOK_INPUT=$(cat)
 fi
 
-# Parse last_assistant_message (jq preferred, grep fallback)
+# Parse agent identity and last_assistant_message (jq preferred, grep fallback)
+AGENT_ID=""
+AGENT_TYPE=""
 LAST_MSG=""
 if [ -n "$HOOK_INPUT" ]; then
   if command -v jq &> /dev/null; then
     LAST_MSG=$(echo "$HOOK_INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null)
+    AGENT_ID=$(echo "$HOOK_INPUT" | jq -r '.agent_id // empty' 2>/dev/null)
+    AGENT_TYPE=$(echo "$HOOK_INPUT" | jq -r '.agent_type // empty' 2>/dev/null)
   else
     LAST_MSG=$(echo "$HOOK_INPUT" | grep -o '"last_assistant_message":"[^"]*"' | head -1 | sed 's/"last_assistant_message":"//;s/"$//')
   fi
 fi
 
+# Build agent label for log messages
+AGENT_LABEL="$CALLER"
+[ -n "$AGENT_ID" ] && AGENT_LABEL="$CALLER[${AGENT_ID}${AGENT_TYPE:+/$AGENT_TYPE}]"
+
 # Check agent's final status
 if [ -n "$LAST_MSG" ]; then
   if echo "$LAST_MSG" | grep -qi "BLOCKED:"; then
     CLAIM=$(echo "$LAST_MSG" | head -c 200)
-    echo "{\"info\": \"$CALLER reported BLOCKED — skipping verification\", \"claim\": \"$CLAIM\"}"
+    echo "{\"info\": \"$AGENT_LABEL reported BLOCKED — skipping verification\", \"claim\": \"$CLAIM\"}"
     exit 0
   fi
   if ! echo "$LAST_MSG" | grep -qi "COMPLETE"; then
-    echo "{\"warning\": \"$CALLER exited without COMPLETE or BLOCKED — running verification anyway\"}"
+    echo "{\"warning\": \"$AGENT_LABEL exited without COMPLETE or BLOCKED — running verification anyway\"}"
   fi
 fi
 
@@ -111,14 +119,14 @@ _cmux_notify() {
 
 if [ $EXIT_CODE -eq 124 ]; then
   echo "{\"error\": \"Tests timed out after 120 seconds\"}"
-  _cmux_notify "$CALLER" "Timeout" "Tests timed out after 120 seconds"
+  _cmux_notify "$AGENT_LABEL" "Timeout" "Tests timed out after 120 seconds"
   exit $FAIL_EXIT
 elif [ $EXIT_CODE -ne 0 ]; then
   echo "{\"error\": \"Tests failed (exit $EXIT_CODE)\"}"
-  _cmux_notify "$CALLER" "Tests Failed" "Verification failed (exit $EXIT_CODE)"
+  _cmux_notify "$AGENT_LABEL" "Tests Failed" "Verification failed (exit $EXIT_CODE)"
   exit $FAIL_EXIT
 fi
 
 echo '{"verification": "Tests passed"}'
-_cmux_notify "$CALLER" "Tests Passed" "Verification gate passed"
+_cmux_notify "$AGENT_LABEL" "Tests Passed" "Verification gate passed"
 exit 0
