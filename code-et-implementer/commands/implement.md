@@ -7,9 +7,9 @@ argument-hint: [task-id]
 
 Load pending tasks from `TaskList` or `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`. If on main, create a feature branch.
 
-Choose the best execution approach — inline for trivial work, background agents in worktrees for independent tasks, agent swarm for large batches. You decide.
+Every task runs as a subagent in its own worktree. Use the dependency graph to run independent tasks in parallel.
 
-Each agent gets one task, implements it, runs verification from `metadata.verification`, and commits. Merge worktree branches back. Mark tasks completed.
+Each agent gets one task, implements it, and ensures every acceptance criterion has a corresponding test. Done = code compiles, all tests pass via `metadata.verification`. Agent commits, merges back to the feature branch, and removes the worktree — only then mark the task completed.
 
 When done, run `Skill("simplify")` and report summary.
 

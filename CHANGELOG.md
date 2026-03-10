@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.2.0] - 2026-03-10
+
+### Changed
+- **`plan-issue`** — explicit dependency graph reasoning with `blocked_by` for parallel task execution
+- **`implement`** — explicit worktree lifecycle: subagent → worktree → test → commit → merge back → remove worktree → mark done
+
 ## [3.1.0] - 2026-03-09
 
 ### Removed
