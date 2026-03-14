@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Plan with LSP, implement with parallel agents. Pairs with commit-commands and code-review plugins.",
-    "version": "3.2.0"
+    "version": "3.3.0"
   },
   "plugins": [
     {
