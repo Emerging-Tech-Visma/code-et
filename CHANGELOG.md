@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.3.0] - 2026-03-14
+
+### Changed
+- **Remove `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`** — 1M context is now default for Opus 4.6 and token estimation fixes make the 70% override unnecessary. Let Claude Code use its built-in default.
+- **Fix spinner tips** — replace stale `/code:pr` reference with `commit-commands` plugin, remove auto-compact percentage tip
+
 ## [3.2.0] - 2026-03-10
 
 ### Changed

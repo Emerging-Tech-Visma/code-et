@@ -1,6 +1,6 @@
 {
   "name": "code",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "Plan with LSP, implement with parallel agents. Pairs with commit-commands and code-review plugins.",
   "author": {
     "name": "Kennet Kusk"

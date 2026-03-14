@@ -1,8 +1,5 @@
 {
   "plansDirectory": "plans",
-  "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
-  },
   "permissions": {
     "allow": ["Bash(git:*)", "Bash(gh:*)", "Bash", "Edit", "Write"]
   },
@@ -11,8 +8,7 @@
     "Background agents run in isolated worktrees",
     "Use --team for Agent Swarm mode (5+ tasks)",
     "Each agent must pass verification before completing",
-    "Run /code:pr when all tasks are done",
-    "Auto-compact at 70% keeps long sessions running",
+    "Use commit-commands plugin for PRs (/commit-push-pr)",
     "Stuck? Run /code:implement again to resume"
   ]
 }
