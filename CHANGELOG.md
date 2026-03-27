@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.4.0] - 2026-03-27
+
+### Added
+- **`/code:go` command** — feature/bug intake assistant that scopes work by identifying exact app, screen, and files. Auto-generates `FILE-REFERENCE.md` on first run by scanning the project; run `/code:go update` to refresh it later
+- **`references/go-reference.md`** — documents the go command workflow and FILE-REFERENCE.md lifecycle
+
 ## [3.3.0] - 2026-03-14
 
 ### Changed
