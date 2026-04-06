@@ -48,6 +48,18 @@
         ]
       }
     ],
+    "FileChanged": [
+      {
+        "matcher": "*/page.tsx|*/route.ts|*/route.tsx|*/index.tsx|*/layout.tsx",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/refresh-file-reference.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
     "InstructionsLoaded": [
       {
         "matcher": "",

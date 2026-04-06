@@ -3,6 +3,7 @@ background: true
 tools: Bash, Bash(gh:*), Bash(git:*), Read, Grep, Glob, Agent, Skill, TaskCreate, TaskList, TaskGet, TaskUpdate
 description: Implement pending tasks with parallel agents
 argument-hint: [task-id]
+effort: medium
 ---
 
 Load pending tasks from `TaskList` or `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`. If on main, create a feature branch.

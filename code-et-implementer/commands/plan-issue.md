@@ -2,6 +2,7 @@
 tools: Read, Grep, Glob, Bash, LSP, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet
 description: "Research codebase with LSP, create implementation tasks"
 argument-hint: "[feature-description] [@spec-file]"
+effort: high
 ---
 
 Research codebase, create tasks with `file:line` references.
