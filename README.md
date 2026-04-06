@@ -9,17 +9,17 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
 ## Workflow
 
 ```
-  1. PLAN                          2. IMPLEMENT                    3. SHIP
-  /code:plan-issue                 /code:implement                 /commit-push-pr
-  ┌──────────────────┐             ┌──────────────────┐            ┌────────────┐
-  │ LSP research     │             │ Inline (trivial)  │           │ Auto-desc  │
-  │ Grep/Glob files  │  ──tasks──▶ │ Agents (parallel) │  ──done──▶│ Push + PR  │
-  │ Create tasks     │             │ Swarm (large)     │           │            │
-  └──────────────────┘             └──────────────────┘            └────────────┘
-                                     Each agent:
-                                     - Worktree isolation
-                                     - Verification gate
-                                     - Auto-commit on pass
+  0. INTAKE                        1. PLAN                          2. IMPLEMENT                    3. SHIP
+  /code:go                         /code:plan-issue                 /code:implement                 /commit-push-pr
+  ┌──────────────────┐             ┌──────────────────┐             ┌──────────────────┐            ┌────────────┐
+  │ Scope the work   │             │ LSP research     │             │ Inline (trivial)  │           │ Auto-desc  │
+  │ Identify files   │  ──brief──▶ │ Grep/Glob files  │  ──tasks──▶ │ Agents (parallel) │  ──done──▶│ Push + PR  │
+  │ FILE-REFERENCE   │             │ Create tasks     │             │ Swarm (large)     │           │            │
+  └──────────────────┘             └──────────────────┘             └──────────────────┘            └────────────┘
+                                                                      Each agent:
+                                                                      - Worktree isolation
+                                                                      - Verification gate
+                                                                      - Auto-commit on pass
 ```
 
 ### Git Branch Flow
@@ -38,6 +38,10 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   YOU: "add dark mode support"
    |
    v
+  /code:go ─── scopes ────────▶ identifies app, screen, files
+   │                             generates/updates FILE-REFERENCE.md
+   │
+   ▼ task brief
   /code:plan-issue ─── uses ──▶ typescript-lsp (LSP)
    │                             goToDefinition, findReferences
    │                             hover for type info
@@ -64,8 +68,9 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
   +-------------------+--------------------------------------------+
   | Plugin            | What it does                               |
   +-------------------+--------------------------------------------+
-  | code-et           | /plan-issue  — LSP research, create tasks  |
-  |   (this repo)     | /implement   — parallel agents in worktrees|
+  | code-et           | /go          — intake, scope work + files   |
+  |   (this repo)     | /plan-issue  — LSP research, create tasks  |
+  |                   | /implement   — parallel agents in worktrees|
   +-------------------+--------------------------------------------+
   | commit-commands   | /commit      — auto-message git commit     |
   |   (official)      | /commit-push-pr — branch + commit + PR     |
@@ -288,6 +293,7 @@ Then install the plugin:
 
 After installation, these skills are available:
 
+- `/code:go` — feature/bug intake, scopes work and generates FILE-REFERENCE.md
 - `/code:plan-issue` — LSP research → native tasks with file:line refs
 - `/code:implement` — parallel agents in worktree isolation
 
@@ -315,7 +321,7 @@ Then in Claude Code:
 /plugin install code@code-et
 ```
 
-After installation, verify skills are available by typing `/code:` — you should see plan-issue and implement.
+After installation, verify skills are available by typing `/code:` — you should see go, plan-issue, and implement.
 
 ## Local Development
 
@@ -373,10 +379,11 @@ bun dev
 
 ### code-et plugin
 
-| Skill              | Description                                                                                  |
-| ------------------ | -------------------------------------------------------------------------------------------- |
-| `/code:plan-issue` | Research codebase with LSP, create native tasks with file:line refs and dependencies         |
-| `/code:implement`  | Execute tasks with parallel agents in worktree isolation                                     |
+| Skill              | Effort | Description                                                                                  |
+| ------------------ | ------ | -------------------------------------------------------------------------------------------- |
+| `/code:go`         | high   | Feature/bug intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
+| `/code:plan-issue` | high   | Research codebase with LSP, create native tasks with file:line refs and dependencies         |
+| `/code:implement`  | medium | Execute tasks with parallel agents in worktree isolation                                     |
 
 ### Official plugins
 
@@ -480,7 +487,7 @@ main ─────────────────────────
         feature/dashboard ──PR #2──────┘
 ```
 
-1. **Start a feature** — run `/code:plan-issue "add auth"`, then `/code:implement`. This creates a branch like `feature/add-auth` automatically.
+1. **Start a feature** — run `/code:go "add auth"` to scope the work, then `/code:plan-issue` to create tasks, then `/code:implement`. This creates a branch like `feature/add-auth` automatically.
 2. **Open a PR** — run `/commit-push-pr`. This pushes the branch and creates a pull request on GitHub.
 3. **Start the next feature** — switch back to main (`git checkout main`), then repeat step 1 for the next feature. Each feature gets its own branch and PR.
 
