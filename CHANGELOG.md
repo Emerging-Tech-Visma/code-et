@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.5.0] - 2026-04-06
+
+### Added
+- **`effort` frontmatter** — skills now declare thinking effort: `high` for `/code:go` and `/code:plan-issue` (deep research), `medium` for `/code:implement` (orchestration)
+- **`FileChanged` hook** — auto-detects when page/route/layout files change and notifies that `FILE-REFERENCE.md` may be stale, prompting `/code:go update`
+
 ## [3.4.0] - 2026-03-27
 
 ### Added

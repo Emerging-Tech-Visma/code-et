@@ -2,6 +2,7 @@
 tools: Read, Grep, Glob, Bash, Agent
 description: "Feature/bug intake — scope work by identifying exact app, screen, and files. Also generates/updates FILE-REFERENCE.md."
 argument-hint: "[description of feature or bug] or 'update' to refresh FILE-REFERENCE.md"
+effort: high
 ---
 
 # Go — Feature/Bug Intake
