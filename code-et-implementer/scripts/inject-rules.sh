@@ -17,23 +17,36 @@ if [ -n "$HOOK_INPUT" ] && command -v jq &>/dev/null; then
 fi
 
 RULES_DIR=".claude/rules"
+PLUGIN_RULES_DIR="$(dirname "$0")/../.claude/rules"
 
-if [ ! -d "$RULES_DIR" ]; then
-  exit 0
-fi
-
-# Collect all rule files
+# Collect all rule files (project + plugin-bundled)
 RULES=""
-for f in "$RULES_DIR"/*.md; do
-  [ -f "$f" ] || continue
-  CONTENT=$(cat "$f")
-  if [ -n "$CONTENT" ]; then
-    RULES="${RULES}--- ${f} ---
+
+if [ -d "$RULES_DIR" ]; then
+  for f in "$RULES_DIR"/*.md; do
+    [ -f "$f" ] || continue
+    CONTENT=$(cat "$f")
+    if [ -n "$CONTENT" ]; then
+      RULES="${RULES}--- ${f} ---
 ${CONTENT}
 
 "
-  fi
-done
+    fi
+  done
+fi
+
+if [ -d "$PLUGIN_RULES_DIR" ]; then
+  for f in "$PLUGIN_RULES_DIR"/*.md; do
+    [ -f "$f" ] || continue
+    CONTENT=$(cat "$f")
+    if [ -n "$CONTENT" ]; then
+      RULES="${RULES}--- ${f} ---
+${CONTENT}
+
+"
+    fi
+  done
+fi
 
 if [ -z "$RULES" ]; then
   exit 0

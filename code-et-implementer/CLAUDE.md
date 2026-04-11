@@ -42,3 +42,7 @@ metadata: {
 - TypeScript strict mode
 - Max 600 lines per file
 - Use server components by default, client components only when needed
+
+## Brevity
+
+Drop filler ("just", "simply", hedging), pleasantries, full sentences where fragments work. Pattern: `[thing] [action] [reason].` Never compress code blocks, file paths, error messages, or security warnings.

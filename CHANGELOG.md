@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.5.1] - 2026-04-11
+
+### Added
+- **Brevity rules** (caveman-inspired) — agents drop filler, hedging, and pleasantries; task subjects enforced as `<verb> <object>` ≤50 chars. Rules shipped in `.claude/rules/brevity.md` and injected via `inject-rules.sh` for subagents, `CLAUDE.md` for main agent, and inline in `/code:go` and `/code:plan-issue`
+- **Plugin-bundled rules injection** — `inject-rules.sh` now scans both the user's project `.claude/rules/` and the plugin's own `.claude/rules/`, so brevity rules travel with the plugin without requiring user setup
+
 ## [3.5.0] - 2026-04-06
 
 ### Added
