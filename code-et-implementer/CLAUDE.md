@@ -32,10 +32,14 @@ Tasks created with `TaskCreate` should include metadata:
 ```
 metadata: {
   verification: "bun test && bun run lint",
-  files: ["src/path/to/file.ts"],
-  expected_outcome: "what success looks like"
+  files: ["src/path/to/file.ts:42"],
+  expected_outcome: "what success looks like",
+  rationale: "why this task exists — the constraint or decision driving it",
+  user_story: "US-N" | "AC-N.M" | "chore:<reason>"  // feature lane only
 }
 ```
+
+`rationale` is mandatory. Subagents in `/code:implement` start cold — they need the *why*, not just the *what*, to make judgment calls.
 
 ## Code Standards
 
