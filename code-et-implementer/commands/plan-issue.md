@@ -2,7 +2,7 @@
 tools: Read, Grep, Glob, Bash, LSP, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 description: "Plan: detect PRD if present, decompose via LSP into tagged tasks."
 argument-hint: "[feature-description] [@spec-file]"
-effort: high
+effort: xhigh
 ---
 
 Plan implementation tasks. Two paths:
@@ -23,9 +23,11 @@ Plan implementation tasks. Two paths:
      "verification": "<cmd>",
      "files": ["path:line", ...],
      "expected_outcome": "<observable success>",
+     "rationale": "<1-2 sentences: why this task exists, the constraint or decision driving it>",
      "user_story": "US-N" | "AC-N.M" | "chore:<reason>"
    }
    ```
+   `rationale` is mandatory — the subagent starts cold and needs the *why*, not just the *what*. Reject any task whose rationale would be "because the PRD says so"; restate the underlying constraint.
 6. Set dependencies with `TaskUpdate(addBlockedBy)`. Independent tasks stay parallel.
 7. Save manifest to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`.
 
@@ -41,10 +43,11 @@ Plan implementation tasks. Two paths:
    {
      "verification": "<cmd>",
      "files": ["path:line", ...],
-     "expected_outcome": "<what success looks like>"
+     "expected_outcome": "<what success looks like>",
+     "rationale": "<1-2 sentences: why this task exists, the constraint or decision driving it>"
    }
    ```
-   (No `user_story` required — bug lane.)
+   (No `user_story` required — bug lane. `rationale` still mandatory.)
 5. Save manifest to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`.
 
 ## Output

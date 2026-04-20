@@ -2,6 +2,20 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.7.0] - 2026-04-20
+
+### Changed — Opus 4.7 alignment
+- **`/code:implement`** now ships an explicit **Dispatch prompt template**. Each worktree subagent starts cold, so the first turn carries intent, PRD context, rationale, `file:line` anchors, expected outcome, verification, constraints, and deliverables — matching the 4.7 "delegate to a capable engineer" model instead of progressive pair-programming.
+- **`/code:implement`** bumped to `effort: xhigh` (4.7 recommended default for coding work — previous `medium` was mis-scoped per Anthropic's 4.7 guidance).
+- **`/code:implement`** now states explicitly that independent tasks MUST be dispatched in a single concurrent batch. 4.7 spawns subagents more judiciously and requires an explicit parallelism cue.
+- **`/code:plan-issue`** task metadata gains a mandatory **`rationale`** field (feature and bug lanes). Captures *why* a task exists — the constraint or decision driving it — so subagents can make judgment calls without round-tripping.
+- **`/code:plan-issue`**, **`/code:go`**, **`/code:prd`** bumped to `effort: xhigh`.
+- Plugin **`CLAUDE.md`** updated to document the new metadata shape (`rationale` + `user_story` fields + `file:line` anchors).
+
+### Notes
+- Requires Claude Opus 4.7 to see the full benefit; older models still run the same flow but without the adaptive-thinking gains.
+- `/code:grill` deliberately stays `effort: high` — it's a progressive, one-question-at-a-time flow, which is the exception to 4.7's "batch upfront" guidance.
+
 ## [3.6.1] - 2026-04-20
 
 ### Fixed

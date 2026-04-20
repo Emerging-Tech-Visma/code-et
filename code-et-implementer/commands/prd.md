@@ -2,7 +2,7 @@
 tools: Read, Write, Bash, Grep, Glob
 description: "Synthesise current conversation into a PRD file at plans/YYYY-MM-DD-<slug>.md. Sets session title. Local only — no GitHub issue."
 argument-hint: "[optional slug override]"
-effort: high
+effort: xhigh
 ---
 
 # PRD — Product Requirements Document

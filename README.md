@@ -402,11 +402,11 @@ bun dev
 
 | Skill              | Effort | Description                                                                                  |
 | ------------------ | ------ | -------------------------------------------------------------------------------------------- |
-| `/code:go`         | high   | Bug-lane intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
+| `/code:go`         | xhigh  | Bug-lane intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
 | `/code:grill`      | high   | Feature-lane intake — one-question-at-a-time interview refining scope, constraints, success criteria |
-| `/code:prd`        | medium | Writes PRD to `plans/YYYY-MM-DD-<slug>.md` with `US-N`/`AC-N.M` checklist                     |
-| `/code:plan-issue` | high   | LSP decomposition. When a PRD is present, tags tasks `US-N`/`AC-N.M`/`chore:` from the PRD              |
-| `/code:implement`  | medium | Parallel agents in worktree isolation. Prefixes commits `US-N:`, ticks PRD checklist          |
+| `/code:prd`        | xhigh  | Writes PRD to `plans/YYYY-MM-DD-<slug>.md` with `US-N`/`AC-N.M` checklist                     |
+| `/code:plan-issue` | xhigh  | LSP decomposition with mandatory `rationale` per task. When a PRD is present, tags tasks `US-N`/`AC-N.M`/`chore:` from the PRD |
+| `/code:implement`  | xhigh  | Parallel agents in worktree isolation. Ships a dispatch template so subagents start cold with full context. Prefixes commits `US-N:`, ticks PRD checklist |
 
 ### Official plugins
 
