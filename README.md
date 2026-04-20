@@ -6,21 +6,41 @@ Bun + Next.js project using task-driven development — no GitHub issues, pure C
 
 > **When to use code-et:** Complex features with 3+ tasks, dependencies, or parallel execution. For simple 1-2 file changes, vanilla Claude Code (plan mode or direct prompting) works great on its own.
 
-## Workflow
+## Workflows
+
+code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:implement` → `/commit-push-pr`); only the front end differs.
+
+### Bug lane — small, scoped work
 
 ```
-  0. INTAKE                        1. PLAN                          2. IMPLEMENT                    3. SHIP
-  /code:go                         /code:plan-issue                 /code:implement                 /commit-push-pr
-  ┌──────────────────┐             ┌──────────────────┐             ┌──────────────────┐            ┌────────────┐
-  │ Scope the work   │             │ LSP research     │             │ Inline (trivial)  │           │ Auto-desc  │
-  │ Identify files   │  ──brief──▶ │ Grep/Glob files  │  ──tasks──▶ │ Agents (parallel) │  ──done──▶│ Push + PR  │
-  │ FILE-REFERENCE   │             │ Create tasks     │             │ Swarm (large)     │           │            │
-  └──────────────────┘             └──────────────────┘             └──────────────────┘            └────────────┘
-                                                                      Each agent:
-                                                                      - Worktree isolation
-                                                                      - Verification gate
-                                                                      - Auto-commit on pass
+/code:go  →  /code:plan-issue  →  /code:implement  →  /commit-push-pr
+ intake       LSP decomposition     parallel agents     PR
 ```
+
+### Feature lane — larger work across multiple sessions
+
+```
+/code:grill  →  /code:prd  →  /code:plan-issue  →  /code:implement  →  /commit-push-pr
+ interview      PRD file        /ultraplan + LSP     US-N commits      PR (+ /ultrareview hint)
+```
+
+- `/code:grill` runs a one-question-at-a-time interview, refusing to converge until scope, constraints, and success criteria are explicit.
+- `/code:prd` writes the PRD to `plans/YYYY-MM-DD-<branch-slug>.md` with `US-N` / `AC-N.M` checkboxes.
+- `/code:plan-issue` delegates to `/ultraplan` when a PRD is present; falls back to LSP-only decomposition on failure.
+- `/code:implement` prefixes each commit with `US-N:` / `AC-N.M:` / `chore:` and ticks the PRD checkbox for that story.
+
+### PRD file convention
+
+- Path: `plans/YYYY-MM-DD-<slug>.md` where `<slug>` = current branch with `feature/`, `fix/`, or `chore/` prefix stripped.
+- Structure: problem, goals, user stories `US-N`, acceptance criteria `AC-N.M`, open questions, story checklist.
+- Most recent date wins when multiple match the branch slug.
+- Resolved by `scripts/resolve-prd.sh`; consumed by SessionStart, PreCompact, TaskCreated, and `/code:implement`.
+
+### Dependencies
+
+- `/code:grill`, `/code:prd`, and `/code:plan-issue` (feature path) depend on the Anthropic-hosted `/ultraplan` skill.
+- `/ultrareview` is suggested (not required) after PR creation.
+- When `/ultraplan` is unreachable, `/code:plan-issue` announces the fallback once and continues with LSP-only decomposition.
 
 ### Git Branch Flow
 
@@ -381,9 +401,11 @@ bun dev
 
 | Skill              | Effort | Description                                                                                  |
 | ------------------ | ------ | -------------------------------------------------------------------------------------------- |
-| `/code:go`         | high   | Feature/bug intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
-| `/code:plan-issue` | high   | Research codebase with LSP, create native tasks with file:line refs and dependencies         |
-| `/code:implement`  | medium | Execute tasks with parallel agents in worktree isolation                                     |
+| `/code:go`         | high   | Bug-lane intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
+| `/code:grill`      | high   | Feature-lane intake — one-question-at-a-time interview refining scope, constraints, success criteria |
+| `/code:prd`        | medium | Writes PRD to `plans/YYYY-MM-DD-<slug>.md` with `US-N`/`AC-N.M` checklist                     |
+| `/code:plan-issue` | high   | Delegates to `/ultraplan` when PRD present, else LSP decomposition. Tags tasks `US-N`/`AC-N.M`/`chore:` |
+| `/code:implement`  | medium | Parallel agents in worktree isolation. Prefixes commits `US-N:`, ticks PRD checklist          |
 
 ### Official plugins
 

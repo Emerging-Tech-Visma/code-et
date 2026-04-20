@@ -2,6 +2,28 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.6.0] - 2026-04-20
+
+### Added
+- **`/code:grill`** — interrogates a rough idea into a refined brief (one question at a time, codebase-first; "you decide" converges)
+- **`/code:prd`** — synthesises the brief into `plans/YYYY-MM-DD-<slug>.md` with user stories (US-N) and acceptance criteria (AC-N.M). Sets session title `feat:<slug>`
+- **`SessionStart` hook** — injects a 3-line PRD pointer on branches with a matching PRD
+- **`TaskCreated` hook** — enforces `user_story: US-N | AC-N.M | chore:<reason>` tag on feature-lane tasks
+- **`PreCompact` hook** — injects open-stories summary before compaction (multi-session continuity)
+- **`PostToolUse` hook on `Bash`** — suggests `/ultrareview <PR#> --context plans/<slug>.md` after `gh pr create` when a PRD exists
+- **`resolve-prd.sh`** shared helper — branch → `plans/YYYY-MM-DD-<slug>.md`
+- **Bats test suite** for hook scripts under `code-et-implementer/tests/`
+
+### Changed
+- **`/code:plan-issue`** now detects an active PRD, delegates decomposition to `/ultraplan`, tags every task with `user_story`, and LSP-enriches with `file:line`. Falls back to LSP-only path with a one-line announcement when `/ultraplan` is unreachable
+- **`/code:implement`** prefixes commits with `US-N:` / `AC-N.M:` / `chore:` and ticks the PRD checklist when a story completes
+- **README** documents the two-lane (bug + feature) workflow
+
+### Notes
+- Requires Claude Code ≥ 2.1.94 for `UserPromptSubmit.sessionTitle`
+- `/ultraplan` and `/ultrareview` are cloud-hosted Anthropic skills — feature lane degrades gracefully when offline
+- Bug lane (`/code:go` → `/code:plan-issue` → `/code:implement`) is unchanged when no PRD exists
+
 ## [3.5.1] - 2026-04-11
 
 ### Added

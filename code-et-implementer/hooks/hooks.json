@@ -12,6 +12,18 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pr-created-suggest-review.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
     "PermissionRequest": [
       {
         "matcher": "Read|Grep|Glob|LSP",
@@ -36,6 +48,30 @@
         ]
       }
     ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start-prd.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "TaskCreated": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task-created-tag-check.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
     "TaskCompleted": [
       {
         "matcher": "",
@@ -44,6 +80,18 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task-complete.sh",
             "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pre-compact-prd.sh",
+            "timeout": 3000
           }
         ]
       }

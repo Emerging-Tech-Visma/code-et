@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "3.5.1",
-  "description": "Plan with LSP, implement with parallel agents. Pairs with commit-commands and code-review plugins.",
+  "version": "3.6.0",
+  "description": "Feature + bug lanes. Grill ideas into PRDs, plan with /ultraplan, implement with parallel agents.",
   "author": {
     "name": "Kennet Kusk"
   },
