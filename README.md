@@ -21,13 +21,15 @@ code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:
 
 ```
 /code:grill  →  /code:prd  →  /code:plan-issue  →  /code:implement  →  /commit-push-pr
- interview      PRD file        /ultraplan + LSP     US-N commits      PR (+ /ultrareview hint)
+ interview      PRD file        LSP decomposition    US-N commits      PR (+ /ultrareview hint)
 ```
 
 - `/code:grill` runs a one-question-at-a-time interview, refusing to converge until scope, constraints, and success criteria are explicit.
 - `/code:prd` writes the PRD to `plans/YYYY-MM-DD-<branch-slug>.md` with `US-N` / `AC-N.M` checkboxes.
-- `/code:plan-issue` delegates to `/ultraplan` when a PRD is present; falls back to LSP-only decomposition on failure.
+- `/code:plan-issue` reads the PRD and decomposes with LSP; tasks inherit `US-N` / `AC-N.M` / `chore:` tags from the PRD.
 - `/code:implement` prefixes each commit with `US-N:` / `AC-N.M:` / `chore:` and ticks the PRD checkbox for that story.
+
+> Tip: for richer upstream planning, run `/ultraplan` (built-in Claude Code command, research preview) before `/code:plan-issue` and commit its output to `plans/`.
 
 ### PRD file convention
 
@@ -38,9 +40,8 @@ code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:
 
 ### Dependencies
 
-- `/code:grill`, `/code:prd`, and `/code:plan-issue` (feature path) depend on the Anthropic-hosted `/ultraplan` skill.
 - `/ultrareview` is suggested (not required) after PR creation.
-- When `/ultraplan` is unreachable, `/code:plan-issue` announces the fallback once and continues with LSP-only decomposition.
+- `/ultraplan` is optional — a built-in Claude Code command (research preview) you can run manually upstream of `/code:plan-issue`.
 
 ### Git Branch Flow
 
@@ -404,7 +405,7 @@ bun dev
 | `/code:go`         | high   | Bug-lane intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
 | `/code:grill`      | high   | Feature-lane intake — one-question-at-a-time interview refining scope, constraints, success criteria |
 | `/code:prd`        | medium | Writes PRD to `plans/YYYY-MM-DD-<slug>.md` with `US-N`/`AC-N.M` checklist                     |
-| `/code:plan-issue` | high   | Delegates to `/ultraplan` when PRD present, else LSP decomposition. Tags tasks `US-N`/`AC-N.M`/`chore:` |
+| `/code:plan-issue` | high   | LSP decomposition. When a PRD is present, tags tasks `US-N`/`AC-N.M`/`chore:` from the PRD              |
 | `/code:implement`  | medium | Parallel agents in worktree isolation. Prefixes commits `US-N:`, ticks PRD checklist          |
 
 ### Official plugins

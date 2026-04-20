@@ -2,6 +2,12 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.6.1] - 2026-04-20
+
+### Fixed
+- **`/code:plan-issue`** no longer tries to invoke `/ultraplan` via `Skill("ultraplan", ...)`. `/ultraplan` is a built-in Claude Code command (research preview), not a callable skill, so the delegation in 3.6.0 would fail every run and unconditionally trip the fallback announcement. Feature lane now goes PRD → LSP decomposition directly, with the same `US-N` / `AC-N.M` / `chore:` tagging.
+- README, marketplace, and plugin descriptions updated to reflect the LSP-only path. Users who want upstream `/ultraplan` can run it manually and commit the refined plan to `plans/` before `/code:plan-issue`.
+
 ## [3.6.0] - 2026-04-20
 
 ### Added
