@@ -1,6 +1,6 @@
 ---
 tools: Read, Grep, Glob, Bash, LSP, Agent, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
-description: "Plan: detect PRD, delegate to /ultraplan when present, fall back to LSP-only."
+description: "Plan: detect PRD if present, decompose via LSP into tagged tasks."
 argument-hint: "[feature-description] [@spec-file]"
 effort: high
 ---
@@ -10,18 +10,14 @@ Plan implementation tasks. Two paths:
 ## Path A — PRD present (feature lane)
 
 1. Resolve active PRD via `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh")`.
-2. If a path is returned, Read the PRD.
-3. **Invoke `/ultraplan`** with the PRD. Try `Skill("ultraplan", args=prd_path)` first; if that fails, pass the PRD contents inline. On any failure (skill unavailable, network error, malformed output), announce exactly once:
-   > `/ultraplan unreachable — using local LSP decomposition. Plan may be less thorough for large PRDs.`
-   …and fall through to Path B using the PRD as the spec.
-4. **Post-process `/ultraplan` output:**
-   - For each proposed task, assign a `user_story` tag:
-     - If the task implements a specific AC, tag as `AC-N.M`.
-     - Else if it serves a US, tag as `US-N`.
-     - Else tag as `chore:<one-sentence reason>` (build config, cross-cutting refactors required to enable a story).
-   - Reject any task that cannot be tagged — ask for clarification or split the task.
-5. **LSP-enrich** each task: use `documentSymbol` / `findReferences` to add `file:line` anchors to `metadata.files`.
-6. Create tasks via `TaskCreate` with metadata:
+2. If a path is returned, Read the PRD and treat it as the authoritative spec.
+3. Use LSP (`documentSymbol`, `findReferences`) to anchor each US/AC to `file:line`. Grep/Glob for discovery, LSP for precision. For 3+ independent areas, spawn parallel Explore agents.
+4. Decompose into tasks. For each task, assign a `user_story` tag:
+   - If the task implements a specific AC, tag as `AC-N.M`.
+   - Else if it serves a US, tag as `US-N`.
+   - Else tag as `chore:<one-sentence reason>` (build config, cross-cutting refactors required to enable a story).
+   - Reject any task that cannot be tagged — split it or ask for clarification.
+5. Create tasks via `TaskCreate` with metadata:
    ```
    {
      "verification": "<cmd>",
@@ -30,8 +26,10 @@ Plan implementation tasks. Two paths:
      "user_story": "US-N" | "AC-N.M" | "chore:<reason>"
    }
    ```
-7. Set dependencies with `TaskUpdate(addBlockedBy)`. Independent tasks stay parallel.
-8. Save manifest to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`.
+6. Set dependencies with `TaskUpdate(addBlockedBy)`. Independent tasks stay parallel.
+7. Save manifest to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`.
+
+> Tip: for richer upstream planning, run `/ultraplan` manually before `/code:plan-issue` and commit the refined plan to `plans/` so this command picks it up.
 
 ## Path B — No PRD (bug lane, unchanged)
 

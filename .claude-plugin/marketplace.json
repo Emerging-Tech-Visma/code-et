@@ -4,8 +4,8 @@
     "name": "Kennet Kusk"
   },
   "metadata": {
-    "description": "Feature + bug lanes. Grill ideas into PRDs, plan with /ultraplan, implement with parallel agents.",
-    "version": "3.6.0"
+    "description": "Feature + bug lanes. Grill ideas into PRDs, decompose with LSP, implement with parallel agents.",
+    "version": "3.6.1"
   },
   "plugins": [
     {
