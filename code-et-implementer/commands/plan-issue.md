@@ -7,6 +7,18 @@ effort: xhigh
 
 Plan implementation tasks. Two paths:
 
+## Context Budget (applies to both paths)
+
+Quality of plan = quality of context. Bad context = bad tasks. Discipline:
+
+1. **FILE-REFERENCE.md is the map.** Read it once. Don't re-Glob what it already lists.
+2. **LSP for symbols, not sweeps.** Use `documentSymbol`/`findReferences`/`definition` to anchor `file:line`. Never use LSP to enumerate a whole project.
+3. **Read in slices.** Use `Read(offset, limit)` for files >200 lines. Whole-file reads only when needed for cross-cutting logic.
+4. **Parallel Explore for breadth.** 3+ independent areas → spawn `Agent(subagent_type: "Explore")` calls in one message. Subagent burns its own context; you receive synthesis only.
+5. **Stop at sufficient.** Plan needs `file:line` + rationale per task. If you have that, stop researching. Don't fish for completeness.
+
+Better: 5 tasks with sharp `file:line` + real rationale. Worse: 15 tasks with vague paths.
+
 ## Path A — PRD present (feature lane)
 
 1. Resolve active PRD via `Bash("${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh")`.

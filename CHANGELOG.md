@@ -2,6 +2,14 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.7.2] - 2026-04-26
+
+### Changed
+- **`/code:go`** gains a narrow LSP escape hatch in Step 4 — if the user names a specific function/component/type, the command may use `LSP definition`/`references` once to pin `file:line`. Otherwise FILE-REFERENCE paths stand. Adds `LSP` to the allowed-tools list. Goal: surgical precision on named symbols without putting LSP on the per-call hot path (still `/code:plan-issue`'s job).
+- **`/code:go`** new context-budget rule in the Rules block: FILE-REFERENCE is the map, LSP is a scalpel for named symbols only, never read whole files in `/code:go`.
+- **`/code:plan-issue`** prefixed with a **Context Budget** section that applies to both Path A and Path B: FILE-REFERENCE is the map (don't re-Glob what it lists); LSP for symbols, not project-wide sweeps; `Read(offset, limit)` for files >200 lines; parallel Explore agents for 3+ independent areas; stop at sufficient (5 sharp tasks beat 15 vague ones). Plan quality = context quality.
+- **`.claude-plugin/marketplace.json`** version bumped to `3.7.2` (was stuck at `3.7.0` — the 3.7.1 release missed it).
+
 ## [3.7.1] - 2026-04-25
 
 ### Fixed
