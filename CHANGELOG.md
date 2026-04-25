@@ -2,6 +2,16 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.7.1] - 2026-04-25
+
+### Fixed
+- **`code-et-implementer/.claude-plugin/plugin.json`** bumped to `3.7.1`. The `3.7.0` release tagged the repo and updated the CHANGELOG, but the plugin manifest was left at `3.6.1`, so installs of `code@code-et` continued to report the old version.
+
+### Changed
+- **`/code:implement`** now explicitly dispatches each task via the `Agent` tool with `isolation: "worktree"` and `subagent_type: "general-purpose"`. Earlier versions said "subagent in its own worktree" but didn't pin the dispatch shape, leaving room for agents to shell out to `git worktree add` and inherit parent context. Forked subagents (`CLAUDE_CODE_FORK_SUBAGENT=1`) start with a clean process and read only the dispatch prompt — matching the 4.7 cold-start model.
+- **`/code:implement`** moves the merge + worktree cleanup from the subagent's deliverables to the orchestrator. Subagents inside an isolated worktree have no view of the parent feature branch; the parent skill now reads the returned worktree path/branch from the `Agent` result, runs `git merge --no-ff`, removes the worktree, and only then marks the task complete via `TaskUpdate`.
+- **`/code:go`** template for `FILE-REFERENCE.md` gains five optional sections — **Database Schema**, **Domain Rules / Grammar**, **Hot Paths**, **Landmines**, and **Module Invariants** — each with discovery hints in Step 0. Sections skip-if-empty so projects without (e.g.) a DB don't get noisy stub tables. Goal: make `FILE-REFERENCE.md` rich enough that `/code:plan-issue` can skip a full codebase sweep.
+
 ## [3.7.0] - 2026-04-20
 
 ### Changed — Opus 4.7 alignment
