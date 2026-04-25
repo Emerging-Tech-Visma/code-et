@@ -22,7 +22,6 @@
     "deny": ["Bash(rm -rf:*)"]
   },
   "env": {
-    "CLAUDE_CODE_TASK_LIST_ID": "code-et-tasks",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+    "CLAUDE_CODE_TASK_LIST_ID": "code-et-tasks"
   }
 }

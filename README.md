@@ -132,12 +132,6 @@ code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:
 /plugin install skill-creator@claude-plugins-official
 /plugin install agent-sdk-dev@claude-plugins-official
 
-# LSP plugins (install per language)
-/plugin install typescript-lsp@claude-plugins-official
-/plugin install pyright-lsp@claude-plugins-official
-/plugin install rust-analyzer-lsp@claude-plugins-official
-/plugin install swift-lsp@claude-plugins-official
-
 # code-et (from this repo)
 /plugin marketplace add Emerging-Tech-Visma/code-et
 /plugin install code@code-et
@@ -241,9 +235,6 @@ Create `code-et-implementer/.claude-plugin/settings.json`:
 ```json
 {
   "plansDirectory": "plans",
-  "env": {
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
-  },
   "permissions": {
     "allow": ["Bash(git:*)", "Bash(gh:*)", "Bash"]
   }
@@ -383,11 +374,9 @@ bun dev
 /plugin install feature-dev@claude-plugins-official
 /plugin install skill-creator@claude-plugins-official
 /plugin install agent-sdk-dev@claude-plugins-official
-/plugin install typescript-lsp@claude-plugins-official
-/plugin install pyright-lsp@claude-plugins-official
-/plugin install rust-analyzer-lsp@claude-plugins-official
-/plugin install swift-lsp@claude-plugins-official
 ```
+
+> LSP plugins (`typescript-lsp`, `pyright-lsp`, `rust-analyzer-lsp`, `swift-lsp`) are user-installed per language — see [LSP Setup](#lsp-setup-optional-recommended) below for the binary + env-var requirements.
 
 **code-et plugin** (add marketplace, then install):
 
@@ -434,8 +423,7 @@ All environment variables go in the `env` block of your settings file:
   "env": {
     "ENABLE_LSP_TOOL": "1",
     "CLAUDE_CODE_TASK_LIST_ID": "my-project-tasks",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   }
 }
 ```
@@ -445,7 +433,6 @@ All environment variables go in the `env` block of your settings file:
 | `ENABLE_LSP_TOOL`                      | Set to `"1"` to enable LSP (required for LSP plugins) |
 | `CLAUDE_CODE_TASK_LIST_ID`             | Scoped task list name for persistence across sessions |
 | `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` | Set to `"1"` to enable Agent Swarm team mode          |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`      | Context auto-compact threshold (default: 70)          |
 
 Task persistence lets `/code:implement` resume interrupted work across sessions via a manifest file at `.claude/<id>.json`.
 
