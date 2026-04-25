@@ -18,12 +18,18 @@ Check if `FILE-REFERENCE.md` exists at the project root.
    - Use Glob to find all directories under `apps/`, `packages/`, `src/` (adapt to what exists)
    - Use Glob to find page/route files (e.g. `**/page.tsx`, `**/route.ts`, `**/index.tsx`)
    - Use Grep to find component exports, API endpoints, and key utilities
-2. Build `FILE-REFERENCE.md` with this structure:
+   - **DB schema:** Glob for `prisma/schema.prisma`, `**/*.sql`, `**/migrations/**`, `db/schema.*`
+   - **Domain rules / DSL:** Glob for `rules.md`, `**/RULES.md`, `**/grammar.*`, `*.lark`, `*.peg`
+   - **Hot paths:** identify entry points (route handlers, CLI `main`, queue consumers, cron) — list the 3-5 files that run on every primary user action vs the ones that run only at startup
+   - **Landmines:** Grep for `// DEPRECATED`, `// LEGACY`, `// DO NOT USE`, `@deprecated`; scan top-level CLAUDE.md and per-directory CLAUDE.md for "never" / "do not" rules
+   - **Module invariants:** read each top-level module's CLAUDE.md or top-of-file docstring for non-obvious constraints
+2. Build `FILE-REFERENCE.md` with the structure below. **Skip any section that has no content in this project — do not emit empty stubs.**
 
 ```markdown
 # FILE-REFERENCE.md
 
-Map of every app, screen, and file in the project. Used by `/code:go` for intake scoping.
+Map of every app, screen, and file in the project. Used by `/code:go` for intake scoping
+and as primary context for `/code:plan-issue` (so plans can skip a full codebase sweep).
 
 ## Apps Overview
 
@@ -52,9 +58,51 @@ Map of every app, screen, and file in the project. Used by `/code:go` for intake
 | Endpoint | Method | File | Description |
 |----------|--------|------|-------------|
 | `/api/thing` | `GET` | `app/api/thing/route.ts` | What it does |
+
+<!-- The sections below are optional — include only if the project actually has the artifacts. -->
+
+## Database Schema
+
+One row per table. Columns: name, purpose, key relations. ≤1 line each.
+
+| Table | Purpose | Key relations |
+|-------|---------|---------------|
+| `users` | Auth principals | `sessions.user_id`, `orgs.owner_id` |
+
+## Domain Rules / Grammar
+
+If the project has a `rules.md`, DSL, or grammar file, summarise it in ≤10 lines —
+just enough that a planner doesn't need to re-read the source. Link to the source.
+
+## Hot Paths
+
+Files that run on every primary user action vs files that run once at startup.
+Used to gauge blast radius of a change.
+
+| Path type | Files |
+|-----------|-------|
+| Per-request | `app/api/handler.ts`, `lib/auth/verify.ts` |
+| Startup-only | `lib/config/load.ts`, `db/migrate.ts` |
+
+## Landmines
+
+Things to never do, with the reason. Each row is one rule.
+
+| Rule | Why |
+|------|-----|
+| Never use `legacyClient` from `lib/old-client.ts` | Replaced by `lib/client.ts` in v3; legacy lacks retry |
+
+## Module Invariants
+
+Per top-level module: the non-obvious constraint that callers must respect.
+
+| Module | Invariant |
+|--------|-----------|
+| `lib/billing` | All amounts are integer cents, never floats |
+| `app/api/auth` | Routes must run on Node runtime, not Edge |
 ```
 
-3. Write the file and tell the user: "Created FILE-REFERENCE.md — review it and let me know if anything is missing."
+3. Write the file and tell the user: "Created FILE-REFERENCE.md — review it and let me know if anything is missing." When updating, preserve any hand-edited sections; only refresh the sections you can re-derive.
 4. If this was an "update" request, stop here. Otherwise continue to Step 1.
 
 **If it exists**, read it and continue.
