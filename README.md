@@ -461,18 +461,57 @@ Task persistence lets `/code:implement` resume interrupted work across sessions 
 
 ### LSP Setup (optional, recommended)
 
-LSP powers `/code:plan-issue` deep research (goToDefinition, findReferences, hover). Three things needed:
+LSP powers symbol-level precision in `/code:plan-issue` (full decomposition) and `/code:go` (narrow — only when the user names a specific function/component/type). Without it, both fall back to Grep/Read — works, but less precise.
 
-1. **Enable LSP tool** — add `ENABLE_LSP_TOOL: "1"` to env in `~/.claude/settings.json` (must be `"1"`, not `"true"`)
-2. **Install LSP plugins:**
-   - `typescript-lsp` — for TS/JS (detects tsconfig.json)
-   - `pyright-lsp` — for Python (detects pyproject.toml)
-   - `rust-analyzer-lsp` — for Rust (detects Cargo.toml)
-3. **Language server binaries in $PATH:**
-   - `typescript-language-server` — `npm i -g typescript-language-server`
-   - `pyright` / `pyright-langserver` — `npm i -g pyright`
+Three layers need to line up. Skip any one and LSP stays dark.
 
-The env var gates the feature; plugins configure the connection; binaries do the work. Without LSP, `/code:plan-issue` falls back to Grep/Read (works but less precise).
+#### 1. Env var (gates the feature)
+
+Add to `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "ENABLE_LSP_TOOL": "1"
+  }
+}
+```
+
+Must be the string `"1"`, not `"true"`. Restart Claude Code after editing.
+
+#### 2. LSP plugins (configure the connection)
+
+Install one per language you work in:
+
+```
+/plugin install typescript-lsp@claude-plugins-official     # TS/JS — detects tsconfig.json
+/plugin install pyright-lsp@claude-plugins-official        # Python — detects pyproject.toml
+/plugin install rust-analyzer-lsp@claude-plugins-official  # Rust — detects Cargo.toml
+/plugin install swift-lsp@claude-plugins-official          # Swift — detects Package.swift
+```
+
+#### 3. Language server binaries (do the work)
+
+Each plugin shells out to a binary that must be in `$PATH`:
+
+| Language | Binary | Install |
+|----------|--------|---------|
+| TS/JS | `typescript-language-server` | `npm i -g typescript-language-server typescript` |
+| Python | `pyright-langserver` | `npm i -g pyright` |
+| Rust | `rust-analyzer` | `rustup component add rust-analyzer` *or* `brew install rust-analyzer` |
+| Swift | `sourcekit-lsp` | Bundled with Xcode / Swift toolchain — no separate install |
+
+#### 4. Verify
+
+In a Claude Code session:
+
+```bash
+which typescript-language-server   # or pyright-langserver, rust-analyzer
+```
+
+Then ask Claude: *"use LSP to find the definition of `<symbolNameInThisProject>`"* — if it returns a `file:line`, all three layers are wired. If it falls back to grep, check the env var (most common miss) and restart.
+
+> **Why three layers?** Env var is project-wide on/off. Plugins teach Claude *how* to talk to a specific server. Binaries do the actual analysis. Each layer is independent — diagnose by checking from the bottom up: binary in `$PATH` → plugin installed → env var set.
 
 ### Recommended Hooks
 
