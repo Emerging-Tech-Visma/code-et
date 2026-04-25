@@ -1,5 +1,5 @@
 ---
-tools: Read, Grep, Glob, Bash, Agent
+tools: Read, Grep, Glob, Bash, Agent, LSP
 description: "Feature/bug intake — scope work by identifying exact app, screen, and files. Also generates/updates FILE-REFERENCE.md."
 argument-hint: "[description of feature or bug] or 'update' to refresh FILE-REFERENCE.md"
 effort: xhigh
@@ -154,6 +154,8 @@ Once you have answers, output a **Task Brief** in this format:
 
 Use the exact file paths from FILE-REFERENCE.md. Only list files that are actually relevant.
 
+**LSP precision (only if user named a symbol):** if the request references a specific function, component, type, or hook by name, use `LSP definition`/`references` once to pin `file:line`. Skip otherwise — FILE-REFERENCE paths are enough. Never bulk-scan with LSP.
+
 ## Rules
 
 - Be concise — don't dump the whole reference file back at the user
@@ -161,3 +163,4 @@ Use the exact file paths from FILE-REFERENCE.md. Only list files that are actual
 - If the user already gave enough context, skip straight to the Task Brief
 - Reference concrete screen names and features so the user can point and say "that one"
 - **Task Brief format**: Description ≤2 sentences using fragments. File "Why" column ≤6 words. No hedging or filler.
+- **Context budget**: FILE-REFERENCE is the map. LSP is a scalpel for named symbols only. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job.
