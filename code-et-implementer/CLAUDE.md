@@ -50,3 +50,7 @@ metadata: {
 ## Brevity
 
 Drop filler ("just", "simply", hedging), pleasantries, full sentences where fragments work. Pattern: `[thing] [action] [reason].` Never compress code blocks, file paths, error messages, or security warnings.
+
+## Context Hygiene
+
+See `.claude/rules/context-hygiene.md`. Three rules: trim attached payloads, Read in slices (offset/limit), delegate broad exploration to Explore subagents.
