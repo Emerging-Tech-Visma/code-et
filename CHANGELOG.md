@@ -2,6 +2,21 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.7.3] - 2026-04-26
+
+### Added
+- **`.claude/rules/context-hygiene.md`** — new shared rule capturing three token-hygiene observations from real sessions: (1) trim attached payloads from "select-and-attach" — quote back only the slice you act on, never echo siblings or duplicated blocks; (2) Read in slices — files >200 lines must use `Read(offset, limit)`, re-reading the same file twice for different blocks is a red flag; (3) delegate broad exploration — 3+ independent search areas or fix-in-an-unknown-file goes to `Agent(subagent_type: "Explore")`, dispatched in one message for parallelism. Plus a "stop at sufficient" rule (5 sharp tasks beat 15 vague ones).
+
+### Changed
+- **Plugin `CLAUDE.md`** gains a Context Hygiene section pointing at the new rule, so it loads in every code-et session alongside brevity.
+- **`/code:plan-issue`** Context Budget block deduplicates the read/explore guidance (now defers to the rule file) and adds a token-tight tip: scope to one US/AC per invocation when the context window is hot. Smaller batches let `/code:implement [task-id]` finish before the next plan.
+- **`/code:implement`** dispatch prompt template tells subagents to slice-read and delegate breadth to Explore — preventing the Grep-and-Read drift that bloats subagent context when the fix path is unclear.
+- **`/code:go`** Rules block points at the new rule file so FILE-REFERENCE rebuilds inherit the same hygiene.
+
+### Notes
+- No code change for "select-and-attach" trimming — that's harness-side. Rule #1 is a behavioral instruction to Claude not to echo the attached block back. A genuine fix would require the Claude Code IDE integration to strip siblings before send.
+- `/code:implement [task-id]` already supports single-task runs for users who want to drain one issue at a time.
+
 ## [3.7.2] - 2026-04-26
 
 ### Changed

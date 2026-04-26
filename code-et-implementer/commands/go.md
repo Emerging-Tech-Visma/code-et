@@ -163,4 +163,4 @@ Use the exact file paths from FILE-REFERENCE.md. Only list files that are actual
 - If the user already gave enough context, skip straight to the Task Brief
 - Reference concrete screen names and features so the user can point and say "that one"
 - **Task Brief format**: Description ≤2 sentences using fragments. File "Why" column ≤6 words. No hedging or filler.
-- **Context budget**: FILE-REFERENCE is the map. LSP is a scalpel for named symbols only. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job.
+- **Context budget**: FILE-REFERENCE is the map. LSP is a scalpel for named symbols only. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job. See `.claude/rules/context-hygiene.md`.
