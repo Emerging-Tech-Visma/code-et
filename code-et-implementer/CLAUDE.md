@@ -12,18 +12,25 @@ Task-driven coding workflow with parallel agents in worktree isolation.
 
 | Task | Command |
 |------|---------|
-| Plan feature | `/code:plan-issue` (LSP research → tasks) |
+| Single-bug intake | `/code:go` (scope → Task Brief) |
+| Refine an idea | `/code:grill` (one-question-at-a-time interrogation) |
+| Synthesize PRD | `/code:prd` (idea/conversation → `plans/YYYY-MM-DD-<slug>.md`) |
+| Plan PRD | `/code:plan-issue` (PRD → vertical-slice tasks) |
 | Implement tasks | `/code:implement` (parallel agents in worktrees) |
 
 For commits and PRs use `commit-commands` plugin (`/commit`, `/commit-push-pr`).
 For code review use `code-review` plugin (`/code-review`, `/simplify`).
 For CLAUDE.md maintenance use `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`).
 
-## Workflow
+## Workflow — two lanes
 
-1. `/code:plan-issue` — research codebase with LSP, create tasks with `file:line` refs
-2. `/code:implement` — execute tasks (inline, background agents, or agent swarm)
-3. `/commit-push-pr` — commit, push, and create GitHub PR
+**Bug lane** (single fix): `/code:go` → implement directly → `/commit-push-pr`
+
+**Feature lane** (PRD-driven): `/code:grill` (optional) → `/code:prd` → `/code:plan-issue` → `/code:implement` → `/commit-push-pr`
+
+`/code:go` does NOT chain into `/code:plan-issue` or `/code:implement` — it stops at the Task Brief. If a "bug" needs vertical decomposition (UI ↔ logic ↔ API ↔ DB), it's a feature in disguise — write a PRD.
+
+`/code:plan-issue` is PRD-only. Each task is a **vertical slice** (UI ↔ logic ↔ API ↔ DB, end-to-end testable). When a slice supersedes existing code, deletion of the old code is part of the same commit — no parallel utilities, no `// TODO: remove old X`.
 
 ## Task Metadata Convention
 

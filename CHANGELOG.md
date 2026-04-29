@@ -2,6 +2,34 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.7.4] - 2026-04-29
+
+### Changed — workflow shape
+
+- **Two distinct lanes, no implicit chaining.** `/code:go` is now scoped explicitly to single-bug intake — it produces a Task Brief and stops. Multi-slice work routes through `/code:prd` → `/code:plan-issue` → `/code:implement`. `/code:go` does NOT auto-chain into the planner or implementer; the user reads the brief and decides next steps.
+- **`/code:go`** frontmatter and intro reframed as "Single-Bug Intake". Step 2 ("kind of work") narrowed from feature/bug to bug-class only. New scope guard at top: if the work is multi-slice, stop and route to `/code:prd`.
+- **`/code:plan-issue`** is now **PRD-only**. Path B (the "no PRD, bug lane" fallback) is removed — bugs go to `/code:go`. If no PRD is found, the command tells the user to run `/code:prd` (or `/code:go` for a single bug) and stops. Frontmatter description and argument-hint updated.
+- **`/code:plan-issue`** new `Decomposition Rules` section between Context Budget and the procedure: (1) **vertical slicing is non-negotiable** — each task implements one full slice (UI ↔ logic ↔ API ↔ DB, end-to-end testable); a task touching only one layer is wrong; (2) **replace, don't accumulate** — when a slice supersedes existing logic, deletion of the old code is in the task scope and named in `metadata.rationale`. No parallel utilities, no `// TODO: remove old X`.
+- **`/code:implement`** dispatch prompt Constraints gain a delete-old-code rule: superseded code is removed in the same commit as the new slice. Stale "(bug lane)" parenthetical on the no-prefix branch updated to "(ad-hoc task)" — the bug lane no longer exists in the planner.
+- **`references/go-reference.md`** workflow diagram replaced — was the single chain `/code:go → /code:plan-issue → /code:implement`; now shows the two lanes explicitly with the rationale for not chaining.
+- **`code-et-implementer/CLAUDE.md`** Commands table now lists all five commands (`/code:go`, `/code:grill`, `/code:prd`, `/code:plan-issue`, `/code:implement`) instead of just plan + implement. Workflow section rewritten as two-lane.
+
+### Changed — FILE-REFERENCE.md slimming
+
+- **`/code:go`** `FILE-REFERENCE.md` now stores **non-derivable knowledge only** — apps overview, hot paths, landmines, module invariants, schema purposes, domain rules. The Step 0 template no longer enumerates routes, components, screens, or API endpoints; these are reachable via on-demand `Glob '**/page.tsx'`/`Glob '**/route.ts'` at planning time. Goal: cut FILE-REFERENCE token cost by dropping the parts that duplicate the filesystem and go stale fastest.
+- **`/code:go`** Step 3 (clarifying questions) Glob-discovers concrete screens for the picked app instead of expecting them in FILE-REFERENCE.
+- **`/code:go`** Step 4 (Task Brief) sources file paths from `Glob`/`Grep`; FILE-REFERENCE is consulted for app names, hot paths, and landmine flags.
+- **`/code:plan-issue`** Context Budget block reframed: FILE-REFERENCE = constraints + orientation, **not** a file inventory. Explicit order-of-ops added: read FILE-REFERENCE → Glob the affected area → LSP to pin symbols.
+- **`references/go-reference.md`** structure listing reflects what stays (apps, hot paths, landmines, invariants, optional schema/DSL) and what's deferred to Glob (routes, components, screens, API endpoints).
+
+### Changed — rule files
+
+- **`.claude/rules/brevity.md`** and **`.claude/rules/context-hygiene.md`** compressed ~50%. Both files are re-injected on every Write/Edit; verbose framing (section headers, multi-bullet expansions of single rules) was paying tokens for no signal gain. Same rules, half the surface.
+
+### Notes
+- Existing `FILE-REFERENCE.md` files won't be auto-rewritten. Run `/code:go update` to regenerate in the leaner shape.
+- Why not JSON/JSONB: JSON repeats keys per row (more tokens than markdown for tables); JSONB is a Postgres binary format, not LLM-readable. The token win comes from dropping derivable content, not switching format.
+
 ## [3.7.3] - 2026-04-26
 
 ### Added

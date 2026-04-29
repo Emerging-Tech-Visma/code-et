@@ -43,6 +43,7 @@ Run `<metadata.verification>`. Must exit 0. All existing tests must still pass.
 - Delegate breadth to `Agent(subagent_type: "Explore")` if the fix path is unclear — do not Grep-and-Read your way through unknown territory
 - Every acceptance criterion must have a corresponding test
 - No scope expansion — implement exactly what the task specifies; flag adjacent issues instead of fixing inline
+- If the slice supersedes existing code, delete the superseded code in the same commit. No parallel utilities, no `// TODO: remove old X`. New code obsoletes old.
 - Commit format: `<prefix>: <subject>` where prefix is US-N | AC-N.M | chore (or no prefix if tag is `none`)
 
 ## Deliverables (subagent reports back)
@@ -63,7 +64,7 @@ Do not merge back to the parent feature branch — the orchestrator handles that
    - `US-N: <subject>` when tag is `US-N`
    - `AC-N.M: <subject>` when tag is `AC-N.M`
    - `chore: <subject>` when tag starts with `chore:`
-   - No prefix when tag is `none` or absent (bug lane).
+   - No prefix when tag is `none` or absent (ad-hoc task).
 4. **Tick the PRD checkbox.** If `metadata.user_story` is `US-N`, resolve the PRD via `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh` and use `Edit` to flip `- [ ] US-N` to `- [x] US-N` on that exact line. Stage the PRD change with the agent's commit.
 
 The subagent stops after step 4 and returns. It must NOT merge or remove its own worktree — it has no view of the parent's feature branch from inside the isolated worktree.
