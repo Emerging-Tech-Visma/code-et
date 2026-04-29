@@ -4,29 +4,31 @@ Team development workflow powered by Claude Code + plugins.
 
 Bun + Next.js project using task-driven development — no GitHub issues, pure Claude Code task workflow.
 
-> **When to use code-et:** Complex features with 3+ tasks, dependencies, or parallel execution. For simple 1-2 file changes, vanilla Claude Code (plan mode or direct prompting) works great on its own.
+> **When to use code-et:** Single bugs benefit from `/code:go`'s scoping (intake → Task Brief, you implement). Complex features with 3+ tasks, dependencies, or parallel execution get the full PRD-driven lane. For 1-2 file changes you already understand, direct prompting works fine.
 
 ## Workflows
 
-code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:implement` → `/commit-push-pr`); only the front end differs.
+code-et ships **two distinct lanes**. They share no midpoint — `/code:go` does NOT chain into `/code:plan-issue` or `/code:implement`. The user reads the brief and decides next steps.
 
-### Bug lane — small, scoped work
+### Bug lane — single fix, scope-and-go
 
 ```
-/code:go  →  /code:plan-issue  →  /code:implement  →  /commit-push-pr
- intake       LSP decomposition     parallel agents     PR
+/code:go  →  (user implements directly)  →  /commit-push-pr
+ intake       1-3 file edits, no swarm        PR
 ```
 
-### Feature lane — larger work across multiple sessions
+`/code:go` produces a Task Brief and stops. Most bugs are 1-3 file edits — no orchestration needed. If the work spans multiple coherent vertical slices, it's a feature in disguise — write a PRD instead.
+
+### Feature lane — PRD-driven, vertically sliced
 
 ```
 /code:grill  →  /code:prd  →  /code:plan-issue  →  /code:implement  →  /commit-push-pr
- interview      PRD file        LSP decomposition    US-N commits      PR (+ /ultrareview hint)
+ interview      PRD file        vertical slices       parallel agents     PR (+ /ultrareview hint)
 ```
 
 - `/code:grill` runs a one-question-at-a-time interview, refusing to converge until scope, constraints, and success criteria are explicit.
 - `/code:prd` writes the PRD to `plans/YYYY-MM-DD-<branch-slug>.md` with `US-N` / `AC-N.M` checkboxes.
-- `/code:plan-issue` reads the PRD and decomposes with LSP; tasks inherit `US-N` / `AC-N.M` / `chore:` tags from the PRD.
+- `/code:plan-issue` is **PRD-only**. It decomposes into **vertical slices** — each task implements UI ↔ logic ↔ API ↔ DB end-to-end and is testable as a unit. When a slice supersedes existing code, deletion of the old code is part of the same commit (no parallel utilities, no `// TODO: remove old X`).
 - `/code:implement` prefixes each commit with `US-N:` / `AC-N.M:` / `chore:` and ticks the PRD checkbox for that story.
 
 > Tip: for richer upstream planning, run `/ultraplan` (built-in Claude Code command, research preview) before `/code:plan-issue` and commit its output to `plans/`.
@@ -55,29 +57,45 @@ code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:
 
 ### How the Plugins Work Together
 
+**Bug lane** — single fix, no orchestration:
+
 ```
-  YOU: "add dark mode support"
-   |
-   v
+  YOU: "fix the broken submit button"
+   │
+   ▼
   /code:go ─── scopes ────────▶ identifies app, screen, files
    │                             generates/updates FILE-REFERENCE.md
+   ▼ Task Brief (stops here)
+  (you implement directly — 1-3 file edits)
    │
-   ▼ task brief
-  /code:plan-issue ─── uses ──▶ typescript-lsp (LSP)
-   │                             goToDefinition, findReferences
-   │                             hover for type info
+   ▼ code ready
+  /commit-push-pr ─── runs ───▶ git commit + push + gh pr create
+```
+
+**Feature lane** — PRD-driven, vertically sliced, parallel execution:
+
+```
+  YOU: "add dark mode support"
    │
-   ▼ creates tasks
+   ▼
+  /code:grill ─── refines ────▶ scope, constraints, success criteria
+   │
+   ▼ refined brief
+  /code:prd ─── writes ───────▶ plans/YYYY-MM-DD-<slug>.md
+   │                             US-N stories, AC-N.M checkboxes
+   ▼ PRD
+  /code:plan-issue ─── uses ──▶ LSP for symbol-level precision
+   │                             vertical-slice decomposition
+   │                             each task: UI ↔ logic ↔ API ↔ DB
+   ▼ tasks
   /code:implement ─── spawns ──▶ parallel agents (worktree isolation)
    │                             each agent: edit, test, commit
-   │
+   │                             deletes superseded code in same commit
    ▼ code ready
   /commit-push-pr ─── runs ───▶ git commit + push + gh pr create
    │
    ▼ PR open
   /code-review ─── spawns ────▶ 5 review agents in parallel
-   │                             CLAUDE.md compliance, bugs,
-   │                             git history, code quality
    │
    ▼ merged
   /revise-claude-md ──────────▶ update CLAUDE.md with learnings
@@ -89,9 +107,11 @@ code-et ships two lanes. Both share the midpoint (`/code:plan-issue` → `/code:
   +-------------------+--------------------------------------------+
   | Plugin            | What it does                               |
   +-------------------+--------------------------------------------+
-  | code-et           | /go          — intake, scope work + files   |
-  |   (this repo)     | /plan-issue  — LSP research, create tasks  |
-  |                   | /implement   — parallel agents in worktrees|
+  | code-et           | /go          — single-bug intake → Task Brief |
+  |   (this repo)     | /grill       — interview to refine an idea    |
+  |                   | /prd         — synthesize PRD from session    |
+  |                   | /plan-issue  — PRD → vertical-slice tasks     |
+  |                   | /implement   — parallel agents in worktrees   |
   +-------------------+--------------------------------------------+
   | commit-commands   | /commit      — auto-message git commit     |
   |   (official)      | /commit-push-pr — branch + commit + PR     |
@@ -305,8 +325,10 @@ Then install the plugin:
 
 After installation, these skills are available:
 
-- `/code:go` — feature/bug intake, scopes work and generates FILE-REFERENCE.md
-- `/code:plan-issue` — LSP research → native tasks with file:line refs
+- `/code:go` — single-bug intake → Task Brief; generates FILE-REFERENCE.md (does not chain into plan-issue/implement)
+- `/code:grill` — refine an idea via one-question-at-a-time interview
+- `/code:prd` — synthesize a PRD from the current conversation
+- `/code:plan-issue` — PRD → vertical-slice tasks anchored at `file:line`
 - `/code:implement` — parallel agents in worktree isolation
 
 For CLAUDE.md maintenance, use the `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`).
@@ -391,10 +413,10 @@ bun dev
 
 | Skill              | Effort | Description                                                                                  |
 | ------------------ | ------ | -------------------------------------------------------------------------------------------- |
-| `/code:go`         | xhigh  | Bug-lane intake — scope work by identifying app, screen, and files. Generates FILE-REFERENCE.md |
+| `/code:go`         | xhigh  | **Single-bug intake** — scopes app/screen/files → Task Brief. Does NOT chain into plan-issue/implement. Generates FILE-REFERENCE.md (non-derivable knowledge only) |
 | `/code:grill`      | high   | Feature-lane intake — one-question-at-a-time interview refining scope, constraints, success criteria |
 | `/code:prd`        | xhigh  | Writes PRD to `plans/YYYY-MM-DD-<slug>.md` with `US-N`/`AC-N.M` checklist                     |
-| `/code:plan-issue` | xhigh  | LSP decomposition with mandatory `rationale` per task. When a PRD is present, tags tasks `US-N`/`AC-N.M`/`chore:` from the PRD |
+| `/code:plan-issue` | xhigh  | **PRD-only.** LSP decomposition into vertical slices (UI ↔ logic ↔ API ↔ DB end-to-end). Replaces, doesn't accumulate — superseded code deleted in same commit. Tags tasks `US-N`/`AC-N.M`/`chore:` |
 | `/code:implement`  | xhigh  | Parallel agents in worktree isolation. Ships a dispatch template so subagents start cold with full context. Prefixes commits `US-N:`, ticks PRD checklist |
 
 ### Official plugins
@@ -536,9 +558,10 @@ main ─────────────────────────
         feature/dashboard ──PR #2──────┘
 ```
 
-1. **Start a feature** — run `/code:go "add auth"` to scope the work, then `/code:plan-issue` to create tasks, then `/code:implement`. This creates a branch like `feature/add-auth` automatically.
+1. **Start a bug fix** — run `/code:go "broken submit button"` to scope, then implement the 1-3 file edits directly.
+   **Start a feature** — run `/code:grill` (optional) → `/code:prd` to write a PRD → `/code:plan-issue` to create vertical-slice tasks → `/code:implement` for parallel execution. Each feature gets its own branch automatically.
 2. **Open a PR** — run `/commit-push-pr`. This pushes the branch and creates a pull request on GitHub.
-3. **Start the next feature** — switch back to main (`git checkout main`), then repeat step 1 for the next feature. Each feature gets its own branch and PR.
+3. **Start the next piece of work** — switch back to main (`git checkout main`), then repeat step 1. Each PR is independent.
 
 ### Multiple PRs at the same time
 

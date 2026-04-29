@@ -1,83 +1,51 @@
 ---
 tools: Read, Grep, Glob, Bash, Agent, LSP
-description: "Feature/bug intake — scope work by identifying exact app, screen, and files. Also generates/updates FILE-REFERENCE.md."
-argument-hint: "[description of feature or bug] or 'update' to refresh FILE-REFERENCE.md"
+description: "Single-bug intake — scope work into a Task Brief. Also generates/updates FILE-REFERENCE.md."
+argument-hint: "[bug description] or 'update' to refresh FILE-REFERENCE.md"
 effort: xhigh
 ---
 
-# Go — Feature/Bug Intake
+# Go — Single-Bug Intake
 
-You are an intake assistant. Your job is to help the user precisely scope a feature request or bug report by identifying the exact app, screen, and files involved.
+You are an intake assistant. Your job is to scope **one bug fix** into a precise Task Brief — exact app, screen, files. The user takes the brief and implements directly.
+
+**Scope guard.** `/code:go` is for single, contained bug fixes. If the work spans multiple coherent vertical slices (UI + logic + API + DB layered for a real feature), stop and tell the user to use `/code:prd` → `/code:plan-issue` → `/code:implement` instead. Don't auto-chain — `/code:go` ends at the Task Brief.
 
 ## Step 0 — Ensure FILE-REFERENCE.md exists
 
 Check if `FILE-REFERENCE.md` exists at the project root.
 
+`FILE-REFERENCE.md` holds **non-derivable knowledge only** — apps overview, hot paths, landmines, module invariants, schema purposes, domain rules. File inventories (routes, components, screens, API endpoints) are reachable via `Glob` on demand. Do NOT enumerate them here — duplicating the filesystem just bloats tokens.
+
 **If it does NOT exist** (first run), or if `$ARGUMENTS` contains "update":
-1. Scan the project to discover the structure:
-   - Use Glob to find all directories under `apps/`, `packages/`, `src/` (adapt to what exists)
-   - Use Glob to find page/route files (e.g. `**/page.tsx`, `**/route.ts`, `**/index.tsx`)
-   - Use Grep to find component exports, API endpoints, and key utilities
-   - **DB schema:** Glob for `prisma/schema.prisma`, `**/*.sql`, `**/migrations/**`, `db/schema.*`
-   - **Domain rules / DSL:** Glob for `rules.md`, `**/RULES.md`, `**/grammar.*`, `*.lark`, `*.peg`
-   - **Hot paths:** identify entry points (route handlers, CLI `main`, queue consumers, cron) — list the 3-5 files that run on every primary user action vs the ones that run only at startup
-   - **Landmines:** Grep for `// DEPRECATED`, `// LEGACY`, `// DO NOT USE`, `@deprecated`; scan top-level CLAUDE.md and per-directory CLAUDE.md for "never" / "do not" rules
-   - **Module invariants:** read each top-level module's CLAUDE.md or top-of-file docstring for non-obvious constraints
-2. Build `FILE-REFERENCE.md` with the structure below. **Skip any section that has no content in this project — do not emit empty stubs.**
+
+1. Scan for the non-derivable parts only:
+   - **Apps Overview** (≤5 lines): Glob top-level dirs (`apps/*`, `packages/*`, `src/`); one-line purpose per app from its CLAUDE.md or README
+   - **Hot Paths**: identify entry points — files that run on every primary user action vs once at startup. 3-5 max per bucket
+   - **Landmines**: read top-level CLAUDE.md and per-directory CLAUDE.md for "never"/"do not" rules; Grep for `@deprecated`, `// DO NOT USE`, `// LEGACY`. One row per rule + reason
+   - **Module Invariants**: read top-of-file docstrings for non-obvious constraints (per top-level module)
+   - **Database Schema** (if applicable): Glob for `prisma/schema.prisma`, `**/schema.sql`, `**/migrations/**`. One row per table — names are derivable, purposes aren't
+   - **Domain Rules / DSL** (if applicable): Glob for `rules.md`, `*.lark`, `*.peg`. ≤10-line summary, link to source
+
+2. **Do NOT enumerate** routes, components, screens, API endpoints, or file paths in general. `Glob '**/page.tsx'`, `Glob '**/route.ts'` etc. retrieve them on demand at the planning step.
+
+3. Build `FILE-REFERENCE.md` with the structure below. **Skip any section that has no content — no empty stubs.**
 
 ```markdown
 # FILE-REFERENCE.md
 
-Map of every app, screen, and file in the project. Used by `/code:go` for intake scoping
-and as primary context for `/code:plan-issue` (so plans can skip a full codebase sweep).
+Non-derivable project knowledge for `/code:go` intake and `/code:plan-issue` context.
+**File inventories live in the filesystem.** Glob for routes, components, schemas on demand — they are NOT enumerated here.
 
 ## Apps Overview
 
-| App | Description | Root path |
-|-----|-------------|-----------|
-| App Name | What it does | `apps/name/` |
-
-## [App Name]
-
-### Screens
-
-| Screen | Route | Key files |
-|--------|-------|-----------|
-| Screen Name | `/route` | `path/to/file.tsx` |
-
-## Shared
-
-### Components
-
-| Component | Path | Used by |
-|-----------|------|---------|
-| ComponentName | `packages/shared/path` | App1, App2 |
-
-## API Routes
-
-| Endpoint | Method | File | Description |
-|----------|--------|------|-------------|
-| `/api/thing` | `GET` | `app/api/thing/route.ts` | What it does |
-
-<!-- The sections below are optional — include only if the project actually has the artifacts. -->
-
-## Database Schema
-
-One row per table. Columns: name, purpose, key relations. ≤1 line each.
-
-| Table | Purpose | Key relations |
-|-------|---------|---------------|
-| `users` | Auth principals | `sessions.user_id`, `orgs.owner_id` |
-
-## Domain Rules / Grammar
-
-If the project has a `rules.md`, DSL, or grammar file, summarise it in ≤10 lines —
-just enough that a planner doesn't need to re-read the source. Link to the source.
+| App | Purpose | Root path |
+|-----|---------|-----------|
+| App Name | One-line purpose | `apps/name/` |
 
 ## Hot Paths
 
-Files that run on every primary user action vs files that run once at startup.
-Used to gauge blast radius of a change.
+Files that run on every primary user action vs once at startup. Used to gauge blast radius.
 
 | Path type | Files |
 |-----------|-------|
@@ -86,7 +54,7 @@ Used to gauge blast radius of a change.
 
 ## Landmines
 
-Things to never do, with the reason. Each row is one rule.
+Never-do rules with reasons. One row per rule.
 
 | Rule | Why |
 |------|-----|
@@ -94,16 +62,30 @@ Things to never do, with the reason. Each row is one rule.
 
 ## Module Invariants
 
-Per top-level module: the non-obvious constraint that callers must respect.
+Per top-level module: the non-obvious constraint callers must respect.
 
 | Module | Invariant |
 |--------|-----------|
 | `lib/billing` | All amounts are integer cents, never floats |
 | `app/api/auth` | Routes must run on Node runtime, not Edge |
+
+<!-- Optional sections — include only if applicable. -->
+
+## Database Schema
+
+One row per table. Names are derivable; purposes and key relations aren't.
+
+| Table | Purpose | Key relations |
+|-------|---------|---------------|
+| `users` | Auth principals | `sessions.user_id`, `orgs.owner_id` |
+
+## Domain Rules / Grammar
+
+≤10 lines. Just enough that a planner doesn't need to re-read the source. Link to it.
 ```
 
-3. Write the file and tell the user: "Created FILE-REFERENCE.md — review it and let me know if anything is missing." When updating, preserve any hand-edited sections; only refresh the sections you can re-derive.
-4. If this was an "update" request, stop here. Otherwise continue to Step 1.
+4. Write the file and tell the user: "Created FILE-REFERENCE.md — review it and let me know if anything is missing." When updating, preserve any hand-edited sections; only refresh the sections you can re-derive.
+5. If this was an "update" request, stop here. Otherwise continue to Step 1.
 
 **If it exists**, read it and continue.
 
@@ -114,20 +96,22 @@ Read `FILE-REFERENCE.md` at the project root. This is your map of every app, scr
 ## Step 2 — Understand the request
 
 Read what the user said (their initial message or args). Identify:
-- **What kind of work**: feature, bug fix, styling change, API change, refactor, etc.
+- **Bug class**: visual regression, broken behaviour, API error, data inconsistency, perf issue, etc.
 - **Which app(s)**: CMS, Content Studio, Course Studio, Survey Studio, or Shared
 - **Which screen/area**: e.g. "home page", "editor", "step modal", "dashboard"
+
+If the request describes a multi-slice feature rather than a single bug, stop and route to `/code:prd` → `/code:plan-issue` → `/code:implement` (see scope guard at top).
 
 ## Step 3 — Ask clarifying questions
 
 Ask **only the questions you need** to narrow down:
 
-1. **Which app?** (if ambiguous — skip if obvious)
-2. **Which screen/area?** (use the screen names from FILE-REFERENCE.md)
+1. **Which app?** (if ambiguous — use FILE-REFERENCE Apps Overview; skip if obvious)
+2. **Which screen/area?** Once the app is picked, `Glob 'apps/<app>/**/page.tsx'` (or equivalent) to list concrete screens. FILE-REFERENCE doesn't enumerate them.
 3. **What exactly should change?** (behavior, visual, data, API)
 4. **Any related areas that might be affected?**
 
-Format your questions as a numbered list. Reference the specific screens and features from FILE-REFERENCE.md so the user can pick from concrete options rather than guessing.
+Format your questions as a numbered list. Reference apps from FILE-REFERENCE and discover concrete screens via `Glob` so the user picks from real options rather than guessing.
 
 ## Step 4 — Output a scoped summary
 
@@ -152,15 +136,15 @@ Once you have answers, output a **Task Brief** in this format:
 | `path/to/file` | reason |
 ```
 
-Use the exact file paths from FILE-REFERENCE.md. Only list files that are actually relevant.
+Use file paths discovered via `Glob`/`Grep`. Reference FILE-REFERENCE for app names, hot paths, and any landmines that touch the affected files. Only list files that are actually relevant.
 
-**LSP precision (only if user named a symbol):** if the request references a specific function, component, type, or hook by name, use `LSP definition`/`references` once to pin `file:line`. Skip otherwise — FILE-REFERENCE paths are enough. Never bulk-scan with LSP.
+**LSP precision (only if user named a symbol):** if the request references a specific function, component, type, or hook by name, use `LSP definition`/`references` once to pin `file:line`. Skip otherwise — Glob paths are enough. Never bulk-scan with LSP.
 
 ## Rules
 
 - Be concise — don't dump the whole reference file back at the user
 - Ask max 3-4 questions, not a wall of questions
 - If the user already gave enough context, skip straight to the Task Brief
-- Reference concrete screen names and features so the user can point and say "that one"
+- Reference concrete screen names (from Glob) and apps (from FILE-REFERENCE) so the user can point and say "that one"
 - **Task Brief format**: Description ≤2 sentences using fragments. File "Why" column ≤6 words. No hedging or filler.
-- **Context budget**: FILE-REFERENCE is the map. LSP is a scalpel for named symbols only. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job. See `.claude/rules/context-hygiene.md`.
+- **Context budget**: FILE-REFERENCE = constraints + orientation (apps, hot paths, landmines, invariants). Glob/Grep = file discovery. LSP = scalpel for named symbols. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job. See `.claude/rules/context-hygiene.md`.
