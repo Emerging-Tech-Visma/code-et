@@ -11,7 +11,7 @@ Decompose a PRD into vertical-slice tasks. **PRD-only** — if there's no PRD, r
 
 Quality of plan = quality of context. Bad context = bad tasks.
 
-Follow `.claude/rules/context-hygiene.md` (slice reads, parallel Explore, trim attachments). Plus, plan-issue specifics:
+Follow Context Hygiene rules in `code-et-implementer/CLAUDE.md` (slice reads, parallel Explore, trim attachments). Plus, plan-issue specifics:
 
 1. **FILE-REFERENCE.md = constraints + orientation.** Apps overview, hot paths, landmines, invariants. File inventories are NOT in here — Glob the filesystem for routes/components/schemas when you need them.
 2. **Order of ops:** Read FILE-REFERENCE first (cheap, has the rules) → Glob for files in the affected area → LSP to pin symbols.

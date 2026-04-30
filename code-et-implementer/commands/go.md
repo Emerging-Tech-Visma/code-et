@@ -147,4 +147,4 @@ Use file paths discovered via `Glob`/`Grep`. Reference FILE-REFERENCE for app na
 - If the user already gave enough context, skip straight to the Task Brief
 - Reference concrete screen names (from Glob) and apps (from FILE-REFERENCE) so the user can point and say "that one"
 - **Task Brief format**: Description ≤2 sentences using fragments. File "Why" column ≤6 words. No hedging or filler.
-- **Context budget**: FILE-REFERENCE = constraints + orientation (apps, hot paths, landmines, invariants). Glob/Grep = file discovery. LSP = scalpel for named symbols. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job. See `.claude/rules/context-hygiene.md`.
+- **Context budget**: FILE-REFERENCE = constraints + orientation (apps, hot paths, landmines, invariants). Glob/Grep = file discovery. LSP = scalpel for named symbols. Never read whole files in `/code:go` — that's `/code:plan-issue`'s job. See Context Hygiene in `code-et-implementer/CLAUDE.md`.

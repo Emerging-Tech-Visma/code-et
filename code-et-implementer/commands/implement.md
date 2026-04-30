@@ -38,7 +38,7 @@ Each subagent starts cold. Send one comprehensive first turn — intent, constra
 Run `<metadata.verification>`. Must exit 0. All existing tests must still pass.
 
 ## Constraints
-- Follow rules in .claude/rules/*.md (brevity, context-hygiene, TypeScript strict, ≤600 lines/file)
+- Follow rules in `code-et-implementer/CLAUDE.md` (Brevity, Context Hygiene, TypeScript strict, ≤600 lines/file)
 - Read in slices: `Read(offset, limit)` for files >200 lines; never re-read the same file twice for different blocks
 - Delegate breadth to `Agent(subagent_type: "Explore")` if the fix path is unclear — do not Grep-and-Read your way through unknown territory
 - Every acceptance criterion must have a corresponding test

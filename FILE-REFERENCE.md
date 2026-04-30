@@ -26,30 +26,20 @@ and as primary context for `/code:plan-issue` (so plans can skip a full codebase
 
 | File | Description |
 |------|-------------|
-| `code-et-implementer/hooks/hooks.json` | All hook bindings (PreToolUse, PostToolUse, PermissionRequest, SubagentStop, TaskCompleted, PreCompact, FileChanged, InstructionsLoaded) |
+| `code-et-implementer/hooks/hooks.json` | Hook bindings: `PermissionRequest`, `SubagentStop`, `SessionStart`, `TaskCreated`, `TaskCompleted`, `PreCompact` |
 
 ## Plugin — Scripts
 
 | Script | File | Description |
 |--------|------|-------------|
 | Auto-approve readonly | `code-et-implementer/scripts/auto-approve-readonly.sh` | Auto-approves Read/Grep/Glob/LSP for agents |
-| Inject rules | `code-et-implementer/scripts/inject-rules.sh` | Injects `.claude/rules/*.md` as context before Write/Edit |
-| Log instructions | `code-et-implementer/scripts/log-instructions.sh` | Diagnostic logging of loaded instruction files |
-| PR-created suggest review | `code-et-implementer/scripts/pr-created-suggest-review.sh` | Suggests `/ultrareview` after `gh pr create` when PRD exists |
 | Pre-compact PRD | `code-et-implementer/scripts/pre-compact-prd.sh` | Injects open-stories summary before compaction |
-| Refresh FILE-REFERENCE | `code-et-implementer/scripts/refresh-file-reference.sh` | Notifies that `FILE-REFERENCE.md` may be stale on route/page edits |
 | Resolve PRD | `code-et-implementer/scripts/resolve-prd.sh` | Branch → `plans/YYYY-MM-DD-<slug>.md` lookup |
 | Run tests | `code-et-implementer/scripts/run-tests.sh` | Runs test + lint with timeout and cmux notifications |
 | Session start PRD | `code-et-implementer/scripts/session-start-prd.sh` | Injects 3-line PRD pointer at session start |
 | Task complete | `code-et-implementer/scripts/task-complete.sh` | Desktop notification + agent attribution on task done |
 | Task-created tag check | `code-et-implementer/scripts/task-created-tag-check.sh` | Enforces `user_story` tag on feature-lane tasks |
 | Verify gate | `code-et-implementer/scripts/verify-gate.sh` | SubagentStop verification gate |
-
-## Plugin — Rules (injected into subagents)
-
-| File | Description |
-|------|-------------|
-| `code-et-implementer/.claude/rules/brevity.md` | Caveman brevity — drop filler, fragments over sentences, ≤50-char task subjects |
 
 ## Plugin — References
 
@@ -91,16 +81,16 @@ Used to gauge blast radius of a change.
 
 | Path type | Files |
 |-----------|-------|
-| Per-tool-call (every Bash/Write/Edit) | `scripts/inject-rules.sh`, `scripts/auto-approve-readonly.sh`, `scripts/pr-created-suggest-review.sh` |
-| Per-task-completion | `scripts/task-complete.sh`, `scripts/verify-gate.sh`, `scripts/task-created-tag-check.sh` |
-| Per-session-start | `scripts/session-start-prd.sh`, `scripts/log-instructions.sh` (`InstructionsLoaded`) |
+| Per-readonly-permission-request (Read/Grep/Glob/LSP) | `scripts/auto-approve-readonly.sh` |
+| Per-task-creation | `scripts/task-created-tag-check.sh` |
+| Per-task-completion | `scripts/task-complete.sh` |
+| Per-subagent-stop | `scripts/verify-gate.sh` → `scripts/run-tests.sh` |
+| Per-session-start | `scripts/session-start-prd.sh` |
 | Per-compact (rare) | `scripts/pre-compact-prd.sh` |
-| Per-route-file-edit | `scripts/refresh-file-reference.sh` |
 | Per-`/code:*`-invocation | `commands/<name>.md` |
 | Once on install | `.claude-plugin/plugin.json`, `.claude-plugin/settings.json` |
 
-A regression in `inject-rules.sh` or `auto-approve-readonly.sh` blocks **every** tool call.
-Treat changes there as wide-blast-radius — run the bats suite under `tests/` before commit.
+A regression in `auto-approve-readonly.sh` blocks every read permission prompt; a regression in `verify-gate.sh` blocks every subagent finish. Treat changes to either as wide-blast-radius — run the bats suite under `tests/` before commit.
 
 ## Landmines
 
@@ -121,7 +111,8 @@ Treat changes there as wide-blast-radius — run the bats suite under `tests/` b
 | `commands/*.md` | Frontmatter must declare `effort`; coding/research commands use `xhigh` (4.7 default), `/code:grill` is the documented exception (`high`) |
 | `commands/implement.md` | Each task → one `Agent(isolation: "worktree")` call; orchestrator owns merge + worktree cleanup, subagent does not |
 | `commands/plan-issue.md` | Every task's `metadata.rationale` is mandatory; subagents start cold and need the *why* |
-| `hooks/hooks.json` | All script paths use `${CLAUDE_PLUGIN_ROOT}` — never hard-code `code-et-implementer/scripts/...` |
+| `hooks/hooks.json` | All script paths use `${CLAUDE_PLUGIN_ROOT}` — never hard-code `code-et-implementer/scripts/...`. Add hooks only when (a) no CLAUDE.md instruction can replace them and (b) the per-event token cost is justified by the value. |
+| `FILE-REFERENCE.md` | Refresh only after a PR merges to main with structural changes (`*/page.tsx`, `*/route.ts`, `*/layout.tsx`, new top-level apps/packages). Do not edit on a feature branch — it tracks merged state. |
 | `scripts/*.sh` | Must exit 0 on the no-op path; non-zero exit blocks the tool/event they hook into |
 | `.claude-plugin/plugin.json` | `version` must match the leading `CHANGELOG.md` entry — bump together or not at all |
 | Feature lane tasks | Must carry `user_story: US-N \| AC-N.M \| chore:<reason>`; enforced by `task-created-tag-check.sh` |

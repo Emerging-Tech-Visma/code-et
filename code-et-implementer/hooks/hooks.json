@@ -1,29 +1,5 @@
 {
   "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/inject-rules.sh",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pr-created-suggest-review.sh",
-            "timeout": 3000
-          }
-        ]
-      }
-    ],
     "PermissionRequest": [
       {
         "matcher": "Read|Grep|Glob|LSP",
@@ -92,30 +68,6 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pre-compact-prd.sh",
             "timeout": 3000
-          }
-        ]
-      }
-    ],
-    "FileChanged": [
-      {
-        "matcher": "*/page.tsx|*/route.ts|*/route.tsx|*/index.tsx|*/layout.tsx",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/refresh-file-reference.sh",
-            "timeout": 3000
-          }
-        ]
-      }
-    ],
-    "InstructionsLoaded": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/log-instructions.sh",
-            "timeout": 2000
           }
         ]
       }
