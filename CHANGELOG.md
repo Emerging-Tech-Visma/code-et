@@ -10,6 +10,10 @@ All notable changes to the code-et plugin will be documented in this file.
 - **Removed `feature` from the Task Brief Type list.** The scope guard at the top of `/code:go` already routes multi-slice features to `/code:prd → /code:plan-issue → /code:implement`, but the output template still listed `feature` as a valid type, contradicting the guard. Type list is now `[bug fix / styling / refactor / API change]`.
 - **Synced `marketplace.json` version** with `plugin.json` (was stale at 3.7.4).
 
+### Removed — dead documentation
+
+- **Deleted `code-et-implementer/references/go-reference.md`** (and the now-empty `references/` directory). No active command, script, or CLAUDE.md referenced it; its content (workflow position + FILE-REFERENCE lifecycle) is already documented in `code-et-implementer/CLAUDE.md`. Removed the corresponding stale row from the project-root `FILE-REFERENCE.md`.
+
 ## [3.8.0] - 2026-04-30
 
 ### Removed — low-value / high-token hooks

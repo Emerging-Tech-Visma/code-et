@@ -41,12 +41,6 @@ and as primary context for `/code:plan-issue` (so plans can skip a full codebase
 | Task-created tag check | `code-et-implementer/scripts/task-created-tag-check.sh` | Enforces `user_story` tag on feature-lane tasks |
 | Verify gate | `code-et-implementer/scripts/verify-gate.sh` | SubagentStop verification gate |
 
-## Plugin — References
-
-| File | Description |
-|------|-------------|
-| `code-et-implementer/references/go-reference.md` | Go command workflow and FILE-REFERENCE lifecycle |
-
 ## Plugin — Tests
 
 | Path | Description |
