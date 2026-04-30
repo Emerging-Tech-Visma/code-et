@@ -2,6 +2,30 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.8.0] - 2026-04-30
+
+### Removed — low-value / high-token hooks
+
+- **Dropped `PreToolUse Write|Edit` → `inject-rules.sh`.** Re-injected `.claude/rules/*.md` into context on every Write/Edit (~250 tok/call, dominant token cost in long sessions). Rules now live in `code-et-implementer/CLAUDE.md` (loaded once per session); subagents spawned by `/code:implement` inherit them via the dispatch prompt.
+- **Dropped `PostToolUse Bash` → `pr-created-suggest-review.sh`.** Suggested `/ultrareview` after `gh pr create`; Claude can suggest this from CLAUDE.md context without a hook.
+- **Dropped `FileChanged` → `refresh-file-reference.sh`.** Fired on every save of `*/page.tsx`/`*/route.ts`/`*/layout.tsx`, even mid-edit. Replaced by an explicit lifecycle: `FILE-REFERENCE.md` is refreshed **only after a PR merges to main** that touched structural files. Documented in `code-et-implementer/CLAUDE.md` under "FILE-REFERENCE.md Lifecycle".
+- **Dropped `InstructionsLoaded` → `log-instructions.sh`.** Pure diagnostic, no behavioral effect.
+- **Deleted `code-et-implementer/.claude/rules/` directory** (`brevity.md`, `context-hygiene.md`). Content inlined into `code-et-implementer/CLAUDE.md` so it loads once per session instead of per Write/Edit. Commands that referenced `.claude/rules/*.md` (`go.md`, `plan-issue.md`, `implement.md`) now reference the CLAUDE.md sections directly.
+
+### Kept hooks (low cost / real value)
+
+- `PermissionRequest` — `auto-approve-readonly.sh`: silent, no-token UX.
+- `SubagentStop` — `verify-gate.sh`: real automation (runs `bun test && bun run lint`).
+- `SessionStart` — `session-start-prd.sh`: ~30 tok/session, branch-aware PRD pointer.
+- `TaskCreated` — `task-created-tag-check.sh`: silent on pass; enforces `user_story` tag.
+- `TaskCompleted` — `task-complete.sh`: cmux desktop notify + 1-line info.
+- `PreCompact` — `pre-compact-prd.sh`: rare, useful PRD reminder before compaction.
+
+### Notes
+
+- `bats` test suite under `tests/` already only covers kept scripts (`pre-compact-prd`, `resolve-prd`, `session-start-prd`, `task-created-tag-check`); no test changes required.
+- All structural changes start on a branch (`feature/`, `fix/`, `chore/`) and ship via PR — same git rules as before, just newly explicit in CLAUDE.md as the substitute for the deleted FileChanged hook.
+
 ## [3.7.4] - 2026-04-29
 
 ### Changed — workflow shape

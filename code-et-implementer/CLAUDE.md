@@ -56,8 +56,25 @@ metadata: {
 
 ## Brevity
 
-Drop filler ("just", "simply", hedging), pleasantries, full sentences where fragments work. Pattern: `[thing] [action] [reason].` Never compress code blocks, file paths, error messages, or security warnings.
+Drop filler ("just", "simply", "really"), hedging ("perhaps", "maybe"), pleasantries ("Sure!", "Happy to help"). Fragments over sentences when meaning is clear. Pattern: `[thing] [action] [reason]. [next].`
+
+Task subjects: `<verb> <object>` ≤50 chars. ✗ "I will implement the auth middleware". ✓ "add auth middleware in api/middleware.ts".
+
+Never compress: code, file paths, URLs, error messages, security warnings.
 
 ## Context Hygiene
 
-See `.claude/rules/context-hygiene.md`. Three rules: trim attached payloads, Read in slices (offset/limit), delegate broad exploration to Explore subagents.
+Token waste = worse plans + worse code.
+
+1. **Trim attachments.** Quote back only the slice you act on. Ignore siblings the harness attached. Duplicate blocks count once.
+2. **Read in slices.** Files >200 lines: Grep first, then `Read(offset, limit)` for a window. Re-reading the same file twice = first read should have been a slice.
+3. **Delegate breadth.** 3+ independent areas, or fix in an unknown file → `Agent(subagent_type: "Explore")`. Parallel queries → one message, multiple Agent calls. Don't delegate AND search. Specify thoroughness: `quick` | `medium` | `very thorough`.
+4. **Stop at sufficient.** `file:line` + rationale per task is enough. 5 sharp tasks > 15 vague ones.
+
+## FILE-REFERENCE.md Lifecycle
+
+`FILE-REFERENCE.md` is updated **only after a PR merges to main** that touched structural files (`*/page.tsx`, `*/route.ts`, `*/route.tsx`, `*/index.tsx`, `*/layout.tsx`, or new top-level apps/packages). Workflow:
+
+1. All changes start on a branch (`feature/`, `fix/`, `chore/`) and ship via PR.
+2. After merging the PR to main, if the diff touched structural files, run `/code:go update` to refresh `FILE-REFERENCE.md`. Commit the refresh on a follow-up branch + PR.
+3. On a feature branch, do **not** edit `FILE-REFERENCE.md` — it tracks merged-to-main reality, not in-flight work.
