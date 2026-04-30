@@ -13,6 +13,7 @@ All notable changes to the code-et plugin will be documented in this file.
 ### Removed — dead documentation
 
 - **Deleted `code-et-implementer/references/go-reference.md`** (and the now-empty `references/` directory). No active command, script, or CLAUDE.md referenced it; its content (workflow position + FILE-REFERENCE lifecycle) is already documented in `code-et-implementer/CLAUDE.md`. Removed the corresponding stale row from the project-root `FILE-REFERENCE.md`.
+- **Deleted `plans/2026-04-20-feature-lane-workflow.md`** and **`plans/2026-04-20-feature-lane-workflow-plan.md`** — completed PRDs from the feature-lane work that shipped in v3.7.0. Not referenced by any active code; the architecture they describe is now the implementation, documented in `code-et-implementer/CLAUDE.md`. Git history retains the originals.
 
 ## [3.8.0] - 2026-04-30
 
