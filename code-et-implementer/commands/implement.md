@@ -80,7 +80,8 @@ After each `Agent` call returns:
 
 If a subagent reports failure, leave the worktree in place for inspection — do not auto-discard work.
 
-When done, run `Skill("simplify")` and report summary.
+When done, run `Skill("simplify")`,
+then `Skill("audit", "--fast")` (stages 1–2 only — fmt + clippy). A non-zero exit halts the chain; surface the `audit: report written to <path>` line from stderr in the chat so the developer can jump straight to the failing finding.
 
 ```
 Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Implement Done' --subtitle 'All tasks complete' || true")
