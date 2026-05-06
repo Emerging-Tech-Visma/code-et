@@ -51,7 +51,7 @@ AI-generated code accumulates structural debt that file-local linters miss: re-e
 
 **How to detect.**
 - **Compiler:** the workspace `Cargo.toml` `[dependencies]` table is the primary gate. Adding a forbidden dep makes `cargo build` fail.
-- **CI validator:** `scripts/layer-deps-validator.sh` (30 lines, ships in every project from `/code:bootstrap`) re-asserts the layer rule explicitly.
+- **CI validator:** `scripts/layer-deps-validator.sh` (30 lines, ships in every project from `/code:start`) re-asserts the layer rule explicitly.
 - **Circular deps:** `cargo` already forbids them at the crate level. Within a crate, large modules can still cycle; if it gets bad, restructure into sub-crates.
 
 **How to fix.** Move the type to the inner layer. Introduce a port (trait) in `application` and implement it in `infrastructure`. Never collapse layers to "make it compile" — that's the slop.
@@ -70,7 +70,7 @@ When the CI gate is green but something still feels wrong, look for these patter
 
 ## The 4-stage verification loop (what the CI gate runs)
 
-The `.github/workflows/code-et-audit.yml` workflow shipped by `/code:bootstrap` and `/code:install-ci` runs these stages on every PR. v3.10.0's `/code:audit` will mirror them locally for fast feedback.
+The `.github/workflows/code-et-audit.yml` workflow shipped by `/code:start` and `/code:install-ci` runs these stages on every PR. The same pipeline runs locally via `just audit` (in scaffolded projects) and as the tail step of `/code:ship`.
 
 | Stage | What | Tool |
 |---|---|---|

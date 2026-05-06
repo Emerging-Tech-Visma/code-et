@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# audit-stages.sh — yaml parser for /code:audit.
+# audit-stages.sh — yaml parser for the audit pipeline (used by audit.sh and /code:ship).
 # Emits one `name|command` line per gate stage on stdout, in declared order.
 # Reads the workflow yaml at $1 (default: shared template path).
 # The yaml is the single source of truth — no hardcoded stage list.

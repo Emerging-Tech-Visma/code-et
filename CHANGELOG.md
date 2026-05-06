@@ -2,6 +2,80 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.0.0] - 2026-05-06
+
+**Breaking restructure** — the plugin is now pure-Rust only and condenses to six commands. Existing PRDs and tasks under `plans/` and `.claude/<id>.json` continue to work, but the entry-point command names have changed. See the migration table below.
+
+### Changed — six commands, two lanes
+
+The v3.x command set (`/code:bootstrap`, `/code:go`, `/code:grill`, `/code:prd`, `/code:plan-issue`, `/code:implement`, `/code:audit`, `/code:install-ci`) collapses to:
+
+| v3.x | v4.0 | Why |
+|---|---|---|
+| `/code:bootstrap` | `/code:start` | Same behavior; renamed for "what you do day one". Now runs `cargo update` post-scaffold so every dep is at its latest semver-compatible patch. |
+| `/code:go` | `/code:fix` | Same behavior; renamed for "what you do when something is broken". Pure-Rust now — no more "Rust projects only" conditionals. |
+| `/code:grill` + `/code:prd` + `/code:plan-issue` | `/code:plan` | One extended turn (refined brief → PRD on disk → vertical-slice tasks) with three checkpoints. PRD lands on disk before task decomposition starts so you can interrupt and edit. Includes inline anti-slop self-critique before `TaskCreate`. |
+| `/code:implement` | `/code:ship` | Same parallel-worktree dispatch logic, but the post-merge audit is now built in. On CRITICAL/HIGH findings, dispatches **one** auto-retry fix-pass; if still failing, halts and surfaces the highest finding. No infinite loops. |
+| `/code:audit` (top-level) | `just audit` (in scaffolded projects) and the inner step of `/code:ship` | The standalone `/code:audit` command is gone. The `audit.sh` script and the CI workflow are unchanged — they run via `just audit`, the `SubagentStop` hook, and `/code:ship`'s tail step. |
+| (none) | `/code:review` | New — pre-merge gate that runs the full audit + diff review against `<merge-base>..HEAD`. Delegates to engineering plugin's `code-review` skill if installed; falls back to a 5-area inline checklist (layer compliance, anti-slop, test coverage, security, slice integrity). |
+| `/code:install-ci` | `/code:install-ci` | Unchanged — retrofit the audit gate onto an existing Rust repo. |
+
+### Changed — plugin posture
+
+- **Pure-Rust only.** Dropped all "if Rust" / "if TS legacy" conditionals from commands, CLAUDE.md, and metadata. Every project that uses code-et follows the four-crate Clean Architecture workspace.
+- **Always-latest deps.** `/code:start` runs `cargo update` post-scaffold. Caret pins (`dioxus = "0.7"`, `axum = "0.8"`, `sqlx = "0.8"`, `tokio = "1"`, `tower = "0.5"`) deliver latest minor/patch automatically. Major bumps documented as a manual `cargo upgrade` flow.
+- **README cut from 605 to 203 lines.** Single page: workflow diagram, six commands, install, prereqs, doctrine links, migration table. The "Building a Plugin from Scratch" section is removed — it belonged in a separate guide, not the user-facing README.
+- **CLAUDE.md trimmed** — dropped TS-legacy paragraphs and "if Rust" conditionals; everything assumes the four-crate stack.
+
+### Changed — `/code:ship` adds an auto-retry contract
+
+After all task subagents land and merge, `/code:ship`:
+1. Runs `Skill("simplify")` for changed-code refactor pass.
+2. Runs `bash audit.sh` (full seven-stage gate).
+3. On CRITICAL/HIGH, dispatches **one** fix-pass subagent on the feature branch (no worktree isolation, since the swarm already merged), then re-audits.
+4. After 1 retry, halts and surfaces the highest finding. No infinite loops.
+
+This makes `/code:ship` self-healing for routine misses (a missed `cargo fmt`, a single clippy warning, a layer slip) without burning tokens on stuck audits.
+
+### Changed — `/code:plan` adds inline anti-slop self-critique
+
+Before `TaskCreate`, `/code:plan` walks the drafted task list and **rejects** any task that:
+- Touches only one layer (split or merge into a vertical slice).
+- Has rationale "because the PRD says so" (restate the underlying constraint).
+- Adds a duplicate utility instead of extracting (Rule of Three triggers refactor in the same task).
+- Adds defensive validation between trusted modules (`interface↔application` is the only validation boundary).
+- Adds a mirror test (assert observable behaviour, not implementation calls).
+- Has no test for at least one acceptance criterion.
+
+The full list lives in `code-et-implementer/docs/anti-slop.md`. The inline summary keeps the model focused at plan time without an extra file read.
+
+### Added — deploy & upload via scripts
+
+- **`scripts/deploy.sh`** in every scaffolded project — single entry point for shipping the server. Pre-flight (clean tree + audit) → build container → run migrations → roll out → smoke check. Host-specific lines (`gcloud run deploy`, `kubectl set image`, `flyctl deploy`) are `# TODO:` placeholders to fill in once per project.
+- **`scripts/upload.sh`** — single entry point for uploading static artifacts (web bundle / desktop binaries / mobile builds) to CDN / object store / app store. Same discipline as deploy.
+- **`just deploy <env>`** and **`just upload <kind> <env>`** justfile targets wrap the scripts.
+- **CLAUDE.md template** encodes the rule: never deploy/upload via raw `cargo`/`docker`/`gcloud`/`gsutil` commands. If you find yourself typing the underlying command, add the missing step to the script instead.
+
+### Unchanged
+
+- **Doctrine** (`docs/architecture.md`, `docs/anti-slop.md`, `docs/testing.md`) — already lean and sharp.
+- **Hooks** (`PermissionRequest`, `SubagentStop`, `SessionStart`, `TaskCreated`, `TaskCompleted`, `PreCompact`) — net-positive, low cost.
+- **Templates** (`templates/rust/dioxus-fullstack/`, `templates/shared/`) — same scaffold; `/code:start` now runs `cargo update` after copying.
+- **CI gate** (`code-et-audit.yml`, `layer-deps-validator.sh`) — unchanged. `audit.sh` parses the yaml at runtime so local and CI cannot drift.
+
+### Migration
+
+| If you used v3.x for | In v4.0 do |
+|---|---|
+| Bootstrap | `/code:start <name>` |
+| Single bug | `/code:fix "<bug>"` |
+| Feature (full lane) | `/code:plan "<idea>"` → `/code:ship` → `/code:review` |
+| Pre-merge audit | `/code:review` (or `just audit` for static-only) |
+| Standalone audit | `bash scripts/audit.sh` or `just audit` (no slash command) |
+| CI retrofit | `/code:install-ci` (unchanged) |
+
+PRD files under `plans/YYYY-MM-DD-<slug>.md` continue to work with `/code:plan` (Phase 3 takes an existing PRD and jumps straight to task decomposition).
+
 ## [3.9.0] - 2026-05-06
 
 ### Added — Pure-Rust Clean Architecture

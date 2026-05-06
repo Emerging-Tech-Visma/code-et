@@ -58,3 +58,11 @@ build-mobile:
 # Regenerate sqlx offline cache after schema or query changes.
 sqlx-prepare:
     cargo sqlx prepare --workspace
+
+# Ship the server to staging or prod. Always via scripts/deploy.sh — never raw cargo/gcloud.
+deploy env="staging" *FLAGS="":
+    bash scripts/deploy.sh {{env}} {{FLAGS}}
+
+# Upload static artifacts (web bundle / desktop / mobile) to CDN or release bucket.
+upload kind="web" env="staging":
+    bash scripts/upload.sh {{kind}} {{env}}

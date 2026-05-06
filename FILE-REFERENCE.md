@@ -1,7 +1,7 @@
 # FILE-REFERENCE.md
 
-Map of every component in the code-et plugin. Used by `/code:go` for intake scoping
-and as primary context for `/code:plan-issue` (so plans can skip a full codebase sweep).
+Map of every component in the code-et plugin. Used by `/code:fix` for intake scoping
+and as primary context for `/code:plan` (so plans can skip a full codebase sweep).
 
 ## Project Overview
 
@@ -12,15 +12,16 @@ and as primary context for `/code:plan-issue` (so plans can skip a full codebase
 
 ---
 
-## Plugin — Commands
+## Plugin — Commands (v4.0)
 
 | Command | Skill name | File | Description |
 |---------|------------|------|-------------|
-| `/code:grill` | `code:grill` | `code-et-implementer/commands/grill.md` | Interrogate a rough idea into a refined brief |
-| `/code:prd` | `code:prd` | `code-et-implementer/commands/prd.md` | Synthesise brief into `plans/YYYY-MM-DD-<slug>.md` (US-N / AC-N.M) |
-| `/code:go` | `code:go` | `code-et-implementer/commands/go.md` | Feature/bug intake — scope work, auto-generate this file |
-| `/code:plan-issue` | `code:plan-issue` | `code-et-implementer/commands/plan-issue.md` | Research codebase with LSP, create implementation tasks |
-| `/code:implement` | `code:implement` | `code-et-implementer/commands/implement.md` | Dispatch each task via `Agent(isolation: "worktree")`, parallel where independent |
+| `/code:start` | `code:start` | `code-et-implementer/commands/start.md` | Scaffold a new pure-Rust full-stack project; runs `cargo update` post-scaffold |
+| `/code:install-ci` | `code:install-ci` | `code-et-implementer/commands/install-ci.md` | Retrofit the CI audit gate onto an existing Rust repo |
+| `/code:fix` | `code:fix` | `code-et-implementer/commands/fix.md` | Single-bug intake → Task Brief; user implements directly |
+| `/code:plan` | `code:plan` | `code-et-implementer/commands/plan.md` | One extended turn: refined brief → PRD on disk → vertical-slice tasks (3 checkpoints) |
+| `/code:ship` | `code:ship` | `code-et-implementer/commands/ship.md` | Parallel worktree agents + post-merge audit + 1-pass auto-retry on CRITICAL/HIGH |
+| `/code:review` | `code:review` | `code-et-implementer/commands/review.md` | Pre-merge gate — full audit + diff review (delegates to engineering plugin) |
 
 ## Plugin — Hooks
 
@@ -59,9 +60,9 @@ and as primary context for `/code:plan-issue` (so plans can skip a full codebase
 
 | File | Description |
 |------|-------------|
-| `README.md` | Plugin documentation, workflow diagrams, install instructions |
+| `README.md` | Plugin documentation, workflow diagrams, install instructions (≤210 lines) |
 | `CHANGELOG.md` | Version history — leading entry must match `plugin.json` version |
-| `package.json` | npm metadata (Next.js scaffold; not the plugin's version) |
+| `.claude-plugin/marketplace.json` | Marketplace manifest (points at `code-et-implementer/`) |
 | `.claude/settings.json` | Project-level Claude Code settings |
 | `.claude/settings.local.json` | Local-only Claude Code settings |
 | `plans/` | PRDs and plan artifacts (`YYYY-MM-DD-<slug>.md`) |
@@ -94,17 +95,17 @@ A regression in `auto-approve-readonly.sh` blocks every read permission prompt; 
 | Never force push | Rebase locally, push normally |
 | Never bump only `CHANGELOG.md` without `plugin.json` | The 3.7.0 release shipped with manifest stuck on 3.6.1 — installs reported the old version |
 | Never call `/ultraplan` via `Skill("ultraplan", …)` | It's a built-in Claude Code command, not a callable skill (3.6.1 fix) |
-| Never `git worktree add` from inside `/code:implement` | Use `Agent(isolation: "worktree")` so the subagent forks cleanly |
+| Never `git worktree add` from inside `/code:ship` | Use `Agent(isolation: "worktree")` so the subagent forks cleanly |
 | Never have a subagent merge its own branch | The subagent has no view of the parent feature branch — orchestrator merges |
-| Never serialize independent `/code:implement` tasks | Dispatch them in a single message with multiple `Agent` calls |
+| Never serialize independent `/code:ship` tasks | Dispatch them in a single message with multiple `Agent` calls |
 
 ## Module Invariants
 
 | Module | Invariant |
 |--------|-----------|
-| `commands/*.md` | Frontmatter must declare `effort`; coding/research commands use `xhigh` (4.7 default), `/code:grill` is the documented exception (`high`) |
-| `commands/implement.md` | Each task → one `Agent(isolation: "worktree")` call; orchestrator owns merge + worktree cleanup, subagent does not |
-| `commands/plan-issue.md` | Every task's `metadata.rationale` is mandatory; subagents start cold and need the *why* |
+| `commands/*.md` | Frontmatter must declare `effort`; commands default to `xhigh` (4.7 default); `/code:install-ci` and `/code:review` are the documented exceptions (`high`) |
+| `commands/ship.md` | Each task → one `Agent(isolation: "worktree")` call; orchestrator owns merge + worktree cleanup, subagent does not. Post-merge audit auto-retries once on CRITICAL/HIGH. |
+| `commands/plan.md` | Every task's `metadata.rationale` is mandatory; subagents start cold and need the *why*. PRD lands on disk before task decomposition (Phase 2 → Phase 3 checkpoint). |
 | `hooks/hooks.json` | All script paths use `${CLAUDE_PLUGIN_ROOT}` — never hard-code `code-et-implementer/scripts/...`. Add hooks only when (a) no CLAUDE.md instruction can replace them and (b) the per-event token cost is justified by the value. |
 | `FILE-REFERENCE.md` | Refresh only after a PR merges to main with structural changes (`*/page.tsx`, `*/route.ts`, `*/layout.tsx`, new top-level apps/packages). Do not edit on a feature branch — it tracks merged state. |
 | `scripts/*.sh` | Must exit 0 on the no-op path; non-zero exit blocks the tool/event they hook into |

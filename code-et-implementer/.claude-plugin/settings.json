@@ -6,9 +6,10 @@
   "spinnerTipsOverride": [
     "Press ctrl+t to view task progress",
     "Background agents run in isolated worktrees",
-    "Use --team for Agent Swarm mode (5+ tasks)",
     "Each agent must pass verification before completing",
     "Use commit-commands plugin for PRs (/commit-push-pr)",
-    "Stuck? Run /code:implement again to resume"
+    "Stuck? Run /code:ship again to resume",
+    "/code:plan writes the PRD to disk before decomposing tasks",
+    "/code:ship auto-retries 1 fix-pass on CRITICAL/HIGH audit findings"
   ]
 }

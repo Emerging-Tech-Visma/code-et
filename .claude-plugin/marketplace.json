@@ -4,14 +4,14 @@
     "name": "Kennet Kusk"
   },
   "metadata": {
-    "description": "Pure-Rust Clean Architecture workflow. Bootstrap axum+sqlx+dioxus+tokio, plan with PRDs, implement with parallel agents, audit on CI.",
-    "version": "3.9.0"
+    "description": "Pure-Rust Clean Architecture workflow. Six commands (start, fix, plan, ship, review, install-ci) for axum + sqlx + Dioxus 0.7+ + tokio. Always-latest deps, CI audit gate, anti-slop enforced.",
+    "version": "4.0.0"
   },
   "plugins": [
     {
       "name": "code",
       "source": "./code-et-implementer",
-      "description": "Bootstrap pure-Rust Clean Architecture projects. Plan with LSP, implement with parallel agents, enforce anti-slop on CI."
+      "description": "Pure-Rust Clean Architecture workflow. /code:start scaffolds axum+sqlx+Dioxus, /code:plan synthesises PRD + tasks, /code:ship runs parallel agents and audits, /code:review is the pre-merge gate."
     }
   ]
 }
