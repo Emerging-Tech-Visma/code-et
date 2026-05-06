@@ -6,6 +6,13 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
+# Each ignore needs a one-line rationale. See audit.toml for the long-form.
+# Re-evaluate every time deps bump.
+ignore = [
+    # rsa Marvin Attack — transitive via sqlx-macros (compile-time only),
+    # no mysql at runtime. Remove once sqlx-macros decouples mysql.
+    "RUSTSEC-2023-0071",
+]
 
 [licenses]
 version = 2
