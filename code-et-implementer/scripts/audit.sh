@@ -9,8 +9,8 @@
 #     with "not a Rust workspace, skipping" on stderr (AC-6.1). No report.
 #   - Otherwise parses the workflow yaml via audit-stages.sh and runs every
 #     stage in declared order. Stages whose binary (or referenced script) is
-#     not on PATH skip silently with a stderr notice — T7 will refine into
-#     formal LOW-severity findings.
+#     not on PATH emit a WARNING and are skipped, recorded as LOW-severity
+#     findings; the exit code stays 0 if no other stage fails (US-9).
 #   - Genuine stage failures collect a finding and cause a non-zero exit.
 #   - Always writes <target>/.claude/audit-<YYYYMMDD-HHMMSS>.md (UTC).
 #
@@ -103,6 +103,29 @@ stage_runnable() {
   esac
 }
 
+# Describe the missing artifact when a stage is not runnable.
+# Emits "<artifact>|<install_hint>" — the artifact is the canonical binary or
+# script name (used as the finding's `path` slot), and the hint is a short
+# remediation string with no pipe characters.
+missing_artifact_for() {
+  local cmd="$1"
+  local first sub path
+  first="$(echo "$cmd" | awk '{print $1}')"
+  case "$first" in
+    cargo)
+      sub="$(echo "$cmd" | awk '{print $2}')"
+      printf 'cargo-%s|tool not installed; skipping. Install with: cargo install cargo-%s\n' "$sub" "$sub"
+      ;;
+    bash)
+      path="$(echo "$cmd" | awk '{print $2}')"
+      printf '%s|script not present in workspace; skipping. Add %s to your workspace.\n' "$path" "$path"
+      ;;
+    *)
+      printf '%s|tool not installed; skipping. Install %s and re-run.\n' "$first" "$first"
+      ;;
+  esac
+}
+
 # Heuristic: extract a path:line citation from stage stderr/stdout. Falls back
 # to <workspace-relative-cargo>:1 so every finding has a citation per AC-7.3.
 extract_citation() {
@@ -142,7 +165,15 @@ while IFS='|' read -r name cmd; do
   severity="$(severity_for "$name")"
 
   if ! stage_runnable "$cmd"; then
-    echo "audit: $name — tool not installed; skipping" >&2
+    artifact_hint="$(missing_artifact_for "$cmd")"
+    artifact="${artifact_hint%%|*}"
+    hint="${artifact_hint#*|}"
+    echo "audit: WARNING: $name — $hint" >&2
+    # Record as LOW finding; exit code stays 0 unless another stage fails.
+    msg="${hint//|/\\|}"
+    printf '%s|%s|%s|%s|%s\n' \
+      "LOW" "$name" "$artifact" "1" "$msg" \
+      >> "$FINDINGS_TMP"
     continue
   fi
 

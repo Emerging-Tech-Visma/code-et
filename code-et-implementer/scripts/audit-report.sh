@@ -39,7 +39,9 @@ emit_group() {
   printf '## %s\n\n' "$header"
   while IFS='|' read -r severity stage path line message; do
     [ -z "$severity" ] && continue
-    printf '- **%s** (%s) — %s — `%s:%s`\n' "$severity" "$stage" "$message" "$path" "$line"
+    # `printf --` ends option parsing so format strings starting with `-` are
+    # accepted on bash 5.3+ (which treats a leading `-` as a flag otherwise).
+    printf -- '- **%s** (%s) — %s — `%s:%s`\n' "$severity" "$stage" "$message" "$path" "$line"
   done <<< "$lines"
   printf '\n'
 }
