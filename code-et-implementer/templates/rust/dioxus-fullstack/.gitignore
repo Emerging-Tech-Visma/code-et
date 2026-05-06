@@ -1,0 +1,16 @@
+/target
+/.env
+/dev.db
+/dev.db-journal
+/dist
+/.dioxus
+/Cargo.lock.bak
+
+# IDE
+/.idea
+/.vscode
+*.swp
+*.swo
+
+# macOS
+.DS_Store

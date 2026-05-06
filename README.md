@@ -1,10 +1,19 @@
 # code-et
 
-Team development workflow powered by Claude Code + plugins.
+Pure-Rust Clean Architecture workflow powered by Claude Code + plugins.
 
-Bun + Next.js project using task-driven development — no GitHub issues, pure Claude Code task workflow.
+Task-driven development for Rust full-stack projects (`axum + sqlx + Dioxus 0.7+ + tokio`). Bootstraps new projects with the Dependency Rule enforced at the Cargo level. Ships a CI gate (`.github/workflows/code-et-audit.yml`) that fails PRs on slop. Doctrine in [`code-et-implementer/docs/`](code-et-implementer/docs/) covers architecture, anti-slop, and per-layer testing.
 
-> **When to use code-et:** Single bugs benefit from `/code:go`'s scoping (intake → Task Brief, you implement). Complex features with 3+ tasks, dependencies, or parallel execution get the full PRD-driven lane. For 1-2 file changes you already understand, direct prompting works fine.
+> **When to use code-et:** Single bugs benefit from `/code:go`'s scoping (intake → Task Brief, you implement). Complex features with 3+ tasks, dependencies, or parallel execution get the full PRD-driven lane. New projects start with `/code:bootstrap`. For 1-2 file changes you already understand, direct prompting works fine.
+
+## What's new in v3.9.0
+
+- **`/code:bootstrap`** — scaffold a pure-Rust project (4-crate Clean Architecture workspace + Dioxus 0.7+ for web/desktop/mobile + sqlx for SQLite/Postgres + axum for the server).
+- **`/code:install-ci`** — drop the audit GitHub workflow + layer validator into an existing Rust repo.
+- **CLAUDE.md as control plane** — `code-et-implementer/CLAUDE.md` §"Clean Architecture (Rust)" tells Claude when to invoke the engineering plugin's skills (`code-review`, `tech-debt`, `testing-strategy`, `system-design`) with Clean Architecture context.
+- **Doctrine** — [`docs/architecture.md`](code-et-implementer/docs/architecture.md), [`docs/anti-slop.md`](code-et-implementer/docs/anti-slop.md), [`docs/testing.md`](code-et-implementer/docs/testing.md). Loaded on demand by the skills.
+- **Companion plugins**: hard-depend on `knowledge-work-plugins/engineering` and `rust-analyzer-lsp` (replaces the old `typescript-lsp` recommendation).
+- v3.10.0 preview: `/code:audit` will mirror the CI gate locally for fast feedback.
 
 ## Workflows
 
@@ -372,21 +381,35 @@ Verify: type `/code:` and confirm all skills appear.
 ## Prerequisites
 
 - **Claude Code** — `npm install -g @anthropic-ai/claude-code`
-- **Bun** — `curl -fsSL https://bun.sh/install | bash`
+- **Rust toolchain** — `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - **GitHub CLI (`gh`)** — used by plugins for PRs, issues, and code review ([install](https://cli.github.com/))
+- **Audit tools** — `cargo install --locked cargo-machete cargo-audit cargo-deny cargo-nextest sqlx-cli dioxus-cli`
 
 ## Getting Started
 
 ```bash
-git clone https://github.com/Emerging-Tech-Visma/code-et.git
-cd code-et
-bun install
-bun dev
+# Existing Rust repo: install the CI gate
+/code:install-ci
+
+# Brand new Rust project: bootstrap from scratch
+/code:bootstrap myapp --targets web,desktop,mobile --db sqlite
+cd myapp
+just db-migrate && just run-server
 ```
 
 ## Plugin Installation
 
-**Official plugins (Claude Code):**
+**Required companions:**
+
+```
+/plugin marketplace add knowledge-work-plugins
+/plugin install engineering@knowledge-work-plugins
+/plugin install rust-analyzer-lsp@claude-plugins-official
+```
+
+The `engineering` plugin provides `code-review`, `tech-debt`, `testing-strategy`, and `system-design` skills that code-et's CLAUDE.md delegates to (see "Clean Architecture (Rust) — controlling rules" §"Delegation map"). `rust-analyzer-lsp` provides symbol-level precision for `/code:plan-issue` and `/code:go`.
+
+**Other official plugins (recommended):**
 
 ```
 /plugin install commit-commands@claude-plugins-official
@@ -398,7 +421,7 @@ bun dev
 /plugin install agent-sdk-dev@claude-plugins-official
 ```
 
-> LSP plugins (`typescript-lsp`, `pyright-lsp`, `rust-analyzer-lsp`, `swift-lsp`) are user-installed per language — see [LSP Setup](#lsp-setup-optional-recommended) below for the binary + env-var requirements.
+> Other LSP plugins (`pyright-lsp`, `swift-lsp`) install per language — see [LSP Setup](#lsp-setup-optional-recommended) below.
 
 **code-et plugin** (add marketplace, then install):
 
@@ -413,11 +436,13 @@ bun dev
 
 | Skill              | Effort | Description                                                                                  |
 | ------------------ | ------ | -------------------------------------------------------------------------------------------- |
-| `/code:go`         | xhigh  | **Single-bug intake** — scopes app/screen/files → Task Brief. Does NOT chain into plan-issue/implement. Generates FILE-REFERENCE.md (non-derivable knowledge only) |
+| `/code:go`         | xhigh  | **Single-bug intake** — scopes app/screen/files → Task Brief (with per-file `Layer` on Rust). Does NOT chain into plan-issue/implement. Generates FILE-REFERENCE.md (non-derivable knowledge only) |
 | `/code:grill`      | high   | Feature-lane intake — one-question-at-a-time interview refining scope, constraints, success criteria |
 | `/code:prd`        | xhigh  | Writes PRD to `plans/YYYY-MM-DD-<slug>.md` with `US-N`/`AC-N.M` checklist                     |
-| `/code:plan-issue` | xhigh  | **PRD-only.** LSP decomposition into vertical slices (UI ↔ logic ↔ API ↔ DB end-to-end). Replaces, doesn't accumulate — superseded code deleted in same commit. Tags tasks `US-N`/`AC-N.M`/`chore:` |
+| `/code:plan-issue` | xhigh  | **PRD-only.** LSP decomposition into vertical slices. Replaces, doesn't accumulate — superseded code deleted in same commit. Tags tasks `US-N`/`AC-N.M`/`chore:` plus `metadata.layer` on Rust projects |
 | `/code:implement`  | xhigh  | Parallel agents in worktree isolation. Ships a dispatch template so subagents start cold with full context. Prefixes commits `US-N:`, ticks PRD checklist |
+| `/code:bootstrap`  | xhigh  | Scaffold a pure-Rust full-stack project (axum + sqlx + Dioxus 0.7+ + tokio) with the 4-crate Clean Architecture workspace + CI gate |
+| `/code:install-ci` | high   | Drop the audit GitHub workflow + layer-deps validator into an existing Rust repo |
 
 ### Official plugins
 

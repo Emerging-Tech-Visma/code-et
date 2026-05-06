@@ -9,6 +9,8 @@ effort: xhigh
 
 You are an intake assistant. Your job is to scope **one bug fix** into a precise Task Brief — exact app, screen, files. The user takes the brief and implements directly.
 
+For Rust projects, apply the Clean Architecture rules from `code-et-implementer/CLAUDE.md` §"Clean Architecture (Rust) — controlling rules" and `code-et-implementer/docs/architecture.md`. The Task Brief includes a `Layer` row per touched file (`domain` | `application` | `infrastructure` | `interface`).
+
 **Scope guard.** `/code:go` is for single, contained bug fixes. If the work spans multiple coherent vertical slices (UI + logic + API + DB layered for a real feature), stop and tell the user to use `/code:prd` → `/code:plan-issue` → `/code:implement` instead. Don't auto-chain — `/code:go` ends at the Task Brief.
 
 ## Step 0 — Ensure FILE-REFERENCE.md exists
@@ -126,15 +128,17 @@ Once you have answers, output a **Task Brief** in this format:
 **Description:** [1-2 sentence summary of what needs to happen]
 
 ### Files to touch
-| File | Why |
-|------|-----|
-| `path/to/file` | reason |
+| File | Layer | Why |
+|------|-------|-----|
+| `path/to/file` | domain/application/infrastructure/interface | reason |
 
 ### Related files (check for impact)
-| File | Why |
-|------|-----|
-| `path/to/file` | reason |
+| File | Layer | Why |
+|------|-------|-----|
+| `path/to/file` | domain/application/infrastructure/interface | reason |
 ```
+
+The `Layer` column is required on Rust projects; omit on legacy TS projects without a 4-crate workspace.
 
 Use file paths discovered via `Glob`/`Grep`. Reference FILE-REFERENCE for app names, hot paths, and any landmines that touch the affected files. Only list files that are actually relevant.
 

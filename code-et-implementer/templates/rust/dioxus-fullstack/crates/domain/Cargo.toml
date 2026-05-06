@@ -1,0 +1,13 @@
+[package]
+name = "domain"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+# Dependency Rule: domain has NO workspace dependencies. Pure logic only.
+[dependencies]
+serde = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+time = { workspace = true }

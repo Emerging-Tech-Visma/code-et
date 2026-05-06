@@ -1,0 +1,23 @@
+[package]
+name = "server"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "server"
+path = "src/main.rs"
+
+[dependencies]
+domain = { workspace = true }
+application = { workspace = true }
+infrastructure = { workspace = true }
+interface = { workspace = true, features = ["server"] }
+axum = { workspace = true }
+tokio = { workspace = true }
+sqlx = { workspace = true, features = ["sqlite", "postgres"] }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+secrecy = { workspace = true }

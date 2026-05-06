@@ -7,6 +7,8 @@ effort: xhigh
 
 Decompose a PRD into vertical-slice tasks. **PRD-only** — if there's no PRD, route the user to `/code:prd` first (or `/code:go` for a single bug).
 
+For Rust projects, apply the Clean Architecture rules from `code-et-implementer/CLAUDE.md` §"Clean Architecture (Rust) — controlling rules" and `code-et-implementer/docs/architecture.md`. Each task carries `metadata.layer` (per-file). Vertical slices may span layers; each *file* belongs to exactly one.
+
 ## Context Budget
 
 Quality of plan = quality of context. Bad context = bad tasks.
@@ -15,7 +17,7 @@ Follow Context Hygiene rules in `code-et-implementer/CLAUDE.md` (slice reads, pa
 
 1. **FILE-REFERENCE.md = constraints + orientation.** Apps overview, hot paths, landmines, invariants. File inventories are NOT in here — Glob the filesystem for routes/components/schemas when you need them.
 2. **Order of ops:** Read FILE-REFERENCE first (cheap, has the rules) → Glob for files in the affected area → LSP to pin symbols.
-3. **LSP for symbols, not sweeps.** Use `documentSymbol`/`findReferences`/`definition` to anchor `file:line`. Never use LSP to enumerate a whole project.
+3. **LSP for symbols, not sweeps.** Use `documentSymbol`/`findReferences`/`definition` to anchor `file:line`. Never use LSP to enumerate a whole project. For Rust projects, the `rust-analyzer-lsp` companion plugin is the LSP backend; for TS legacy projects, `typescript-lsp`.
 4. **Tip for token-tight sessions:** scope to one user story or AC per `/code:plan-issue` invocation. Smaller batches keep the context window cool and let `/code:implement` finish before the next plan.
 
 Better: 5 tasks with sharp `file:line` + real rationale. Worse: 15 tasks with vague paths.
@@ -52,10 +54,11 @@ If a slice supersedes existing logic, the task scope **includes deletion of the 
      "files": ["path:line", ...],
      "expected_outcome": "<observable end-to-end behaviour>",
      "rationale": "<1-2 sentences: why this slice exists, the constraint driving it; if replacing existing code, name the path:line being deleted>",
-     "user_story": "US-N" | "AC-N.M" | "chore:<reason>"
+     "user_story": "US-N" | "AC-N.M" | "chore:<reason>",
+     "layer": "domain" | "application" | "infrastructure" | "interface" | "chore"
    }
    ```
-   `rationale` is mandatory — the subagent starts cold and needs the *why*, not the *what*. Reject "because the PRD says so" — restate the underlying constraint.
+   `rationale` is mandatory — the subagent starts cold and needs the *why*, not the *what*. Reject "because the PRD says so" — restate the underlying constraint. `layer` is mandatory on Rust projects; reject layer-violating import directions at planning time (see `code-et-implementer/docs/architecture.md` §"Layer model").
 6. Set dependencies with `TaskUpdate(addBlockedBy)`. Independent slices stay parallel.
 7. Save manifest to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`.
 

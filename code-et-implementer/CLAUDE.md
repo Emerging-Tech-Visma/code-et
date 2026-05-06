@@ -38,27 +38,45 @@ Tasks created with `TaskCreate` should include metadata:
 
 ```
 metadata: {
-  verification: "bun test && bun run lint",
-  files: ["src/path/to/file.ts:42"],
+  verification: "cargo nextest run && cargo clippy --all-targets -- -D warnings",
+  files: ["crates/<layer>/src/path/to/file.rs:42"],
   expected_outcome: "what success looks like",
   rationale: "why this task exists — the constraint or decision driving it",
-  user_story: "US-N" | "AC-N.M" | "chore:<reason>"  // feature lane only
+  user_story: "US-N" | "AC-N.M" | "chore:<reason>",  // feature lane only
+  layer: "domain" | "application" | "infrastructure" | "interface" | "chore"
 }
 ```
 
 `rationale` is mandatory. Subagents in `/code:implement` start cold — they need the *why*, not just the *what*, to make judgment calls.
 
+`layer` is mandatory on Rust projects (skip for non-Rust legacy projects). Each *file* declares its layer; vertical slices may span layers.
+
 ## Code Standards
 
-- TypeScript strict mode
+- Rust 2024 edition; `cargo clippy --all-targets -- -D warnings`; `cargo fmt --check`
 - Max 600 lines per file
-- Use server components by default, client components only when needed
+- Compose at app boundaries (`apps/<name>/main.rs`); never instantiate `infrastructure` inside `interface` — pass via constructor or DI trait
+
+## Clean Architecture (Rust) — controlling rules
+
+When operating on a Rust project, apply Clean Architecture per [`docs/architecture.md`](docs/architecture.md). Each new or modified file declares its layer (`domain` | `application` | `infrastructure` | `interface` | `chore`) in `metadata.layer`. Imports point inward; the `Cargo.toml` workspace deps already enforce this — violating imports fail at `cargo build`.
+
+UI: Dioxus 0.7+ for web, desktop, and mobile from one component tree. DB: Postgres on GCP Cloud SQL for prod, SQLite for local. `sqlx` with `query!` (compile-time-checked); never raw SQL. Forward-only migrations.
+
+Delegation map for human-judgment passes (engineering plugin: `knowledge-work-plugins/engineering`):
+- security / code review → `code-review` skill
+- testing strategy → `testing-strategy` skill
+- tech-debt triage → `tech-debt` skill
+- ADR / system design → `system-design` skill or `/architecture`
+- LSP precision → `rust-analyzer-lsp` companion plugin
+
+Anti-slop hard rules: see [`docs/anti-slop.md`](docs/anti-slop.md). Rule of Three. No mirror tests. No defensive validation at trusted boundaries.
 
 ## Brevity
 
 Drop filler ("just", "simply", "really"), hedging ("perhaps", "maybe"), pleasantries ("Sure!", "Happy to help"). Fragments over sentences when meaning is clear. Pattern: `[thing] [action] [reason]. [next].`
 
-Task subjects: `<verb> <object>` ≤50 chars. ✗ "I will implement the auth middleware". ✓ "add auth middleware in api/middleware.ts".
+Task subjects: `<verb> <object>` ≤50 chars. ✗ "I will implement the auth middleware". ✓ "add auth middleware in interface/http/middleware.rs".
 
 Never compress: code, file paths, URLs, error messages, security warnings.
 
@@ -73,7 +91,7 @@ Token waste = worse plans + worse code.
 
 ## FILE-REFERENCE.md Lifecycle
 
-`FILE-REFERENCE.md` is updated **only after a PR merges to main** that touched structural files (`*/page.tsx`, `*/route.ts`, `*/route.tsx`, `*/index.tsx`, `*/layout.tsx`, or new top-level apps/packages). Workflow:
+`FILE-REFERENCE.md` is updated **only after a PR merges to main** that touched structural files. For Rust projects: `crates/*/Cargo.toml`, `apps/*/Cargo.toml`, root `Cargo.toml`, `migrations/*`, or new top-level apps/crates. For TS legacy projects: `*/page.tsx`, `*/route.ts`, `*/route.tsx`, `*/index.tsx`, `*/layout.tsx`, or new top-level apps/packages. Workflow:
 
 1. All changes start on a branch (`feature/`, `fix/`, `chore/`) and ship via PR.
 2. After merging the PR to main, if the diff touched structural files, run `/code:go update` to refresh `FILE-REFERENCE.md`. Commit the refresh on a follow-up branch + PR.

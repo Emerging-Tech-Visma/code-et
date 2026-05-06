@@ -2,6 +2,66 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.9.0] - 2026-05-06
+
+### Added — Pure-Rust Clean Architecture
+
+- **`/code:bootstrap`** — scaffold a pure-Rust full-stack project (`axum + sqlx + Dioxus 0.7+ + tokio`) with the 4-crate Clean Architecture workspace (`domain`, `application`, `infrastructure`, `interface`) + 4 apps (`server`, `desktop`, `web`, `mobile`). One UI codebase via Dioxus features renders on web, desktop, and mobile. Refuses to run if CWD has `Cargo.toml`/`package.json` (use `--force` to overlay). Tool installs are opt-in via `--install-tools`; default prints a checklist. Targets configurable via `--targets web,desktop,mobile`; database via `--db sqlite|postgres`.
+- **`/code:install-ci`** — drop the audit GitHub workflow + layer-deps validator into an existing Rust repo. Idempotent; `--force` to overwrite. Validator is no-op safe on projects without `crates/<layer>/` structure.
+- **Doctrine layer** at `code-et-implementer/docs/`:
+  - `architecture.md` — Rust Clean Architecture, 4-crate workspace, Dioxus 0.7+ targets matrix, GCP Cloud SQL + IAM auth, SQLite for local, sqlx with parameter binding (`query!` as the goal), forward-only migrations, GCP Secret Manager + `secrecy::Secret<T>`, Rust security checklist (10 items), Uncle Bob's Clean Architecture excerpt verbatim.
+  - `anti-slop.md` — 4-element framework (dead code, duplication, complexity, drift), 5 slop categories (Superficial Competence, Unnecessary Complexity, Defensive Over-Programming, Mirror Tests, Inconsistent Styling), 4-stage CI verification loop, 6 hard rules.
+  - `testing.md` — per-layer test matrix (`#[cfg(test)]` for domain, `mockall` for application, `#[sqlx::test]` for infrastructure, `axum-test` + `dioxus-testing` for interface), contract tests at every port, security test cases at every interface boundary, mirror-test ban with concrete examples.
+
+### Added — CI gate as the authoritative enforcement layer
+
+- `templates/shared/.github/workflows/code-et-audit.yml` — runs on every PR + push to main. Pipeline: `cargo fmt --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `scripts/layer-deps-validator.sh`, `cargo machete`, `cargo audit`, `cargo deny check`, `cargo nextest run --workspace --all-features`. Postgres service container available for tests; SQLite default for unit tests.
+- `templates/shared/scripts/layer-deps-validator.sh` — 30-line bash that reads each crate's `[dependencies]` and asserts the inward dependency rule. Defence-in-depth: the `cargo` build is the primary gate; the validator emits an explicit error message when a `[dependencies]` table drifts.
+- `templates/shared/CLAUDE.md.template` — seeded into bootstrapped projects; references plugin doctrine + names `engineering` plugin and `rust-analyzer-lsp` as recommended companions.
+- `templates/shared/UPDATING.md` — checklist for keeping templates aligned with upstream (axum, sqlx, dioxus minor bumps; GHA action majors).
+- `templates/rust/dioxus-fullstack/` — full working sample: `User` entity in `domain`, `CreateUser`/`GetUser` use cases + `UserRepo` port in `application`, `SqliteUserRepo` impl in `infrastructure`, axum router + Dioxus `App`/`UserCard` components in `interface`, composition roots in `apps/{server,desktop,web,mobile}/main.rs`. `clippy.toml` with cognitive-complexity threshold 15. `deny.toml` with license + source policies. `rust-toolchain.toml` pinned to stable. `Dioxus.toml`, `justfile` with `just audit` mirroring CI, `migrations/20250101000000_init.sql` (SQLite + Postgres compatible).
+
+### Changed — CLAUDE.md as the lean control plane
+
+- **`code-et-implementer/CLAUDE.md`** re-flavoured to Rust:
+  - `verification` example: `bun test && bun run lint` → `cargo nextest run && cargo clippy --all-targets -- -D warnings`.
+  - Code Standards: TypeScript strict / server components → Rust 2024 edition / `clippy --deny warnings` / `cargo fmt --check` / "compose at app boundaries".
+  - File-path examples: `src/path/to/file.ts:42` → `crates/<layer>/src/path/to/file.rs:42`.
+  - Task subject example: `api/middleware.ts` → `interface/http/middleware.rs`.
+  - FILE-REFERENCE.md lifecycle: structural file globs now include `crates/*/Cargo.toml`, `apps/*/Cargo.toml`, root `Cargo.toml`, `migrations/*` for Rust projects (TS legacy globs retained for non-Rust repos).
+- **New "Clean Architecture (Rust) — controlling rules" section** (≤ 12 lines): names the four layers, the Dependency Rule (cargo enforces it), Dioxus 0.7+ for web/desktop/mobile, sqlx + Postgres-on-GCP / SQLite, and a delegation map naming the engineering plugin's skills (`code-review`, `tech-debt`, `testing-strategy`, `system-design`) and `rust-analyzer-lsp` as the human-judgment + LSP companions.
+- **`Task Metadata Convention`** gains `metadata.layer` (`domain` | `application` | `infrastructure` | `interface` | `chore`). Mandatory on Rust projects (CWD has `Cargo.toml`); optional on legacy TS.
+
+### Changed — command + hook integration
+
+- **`commands/go.md`** — Task Brief gains a `Layer` column on Rust projects. 1-line pointer to CLAUDE.md §"Clean Architecture (Rust)" near the scoping step.
+- **`commands/plan-issue.md`** — `metadata.layer` is mandatory on Rust projects; layer-violating import directions are rejected at planning time. LSP guidance now names `rust-analyzer-lsp` (Rust) alongside the legacy `typescript-lsp` mention. 1-line pointer to CLAUDE.md.
+- **`commands/implement.md`** — Constraints block references the Rust controlling rules and `docs/architecture.md` / `docs/anti-slop.md` instead of "TypeScript strict". Subagents respect per-file `metadata.layer`.
+- **`scripts/task-created-tag-check.sh`** — extends the existing `user_story` check to additionally require `metadata.layer ∈ {domain, application, infrastructure, interface, chore}` on Rust projects (detected via `Cargo.toml` at repo root). Non-Rust projects unaffected.
+- **`run-tests.sh` / `verify-gate.sh` unchanged** — `run-tests.sh` already auto-detects `Cargo.toml` and runs `cargo test`. The CI gate is the strongest enforcement; local hooks remain for fast feedback.
+
+### Changed — README + companion plugin posture
+
+- **README.md** — new top section describes the Rust Clean Architecture focus + v3.9.0 highlights. New "Required companions" block: `knowledge-work-plugins/engineering` and `rust-analyzer-lsp` (replaces the broad `typescript-lsp` recommendation as the default LSP). Skills Reference table gains rows for `/code:bootstrap` and `/code:install-ci`. Prerequisites now list Rust toolchain + audit tools instead of Bun. Getting Started flow uses `/code:bootstrap` (greenfield) or `/code:install-ci` (existing repo).
+
+### Removed — legacy Next.js scaffold at repo root
+
+- **Deleted `package.json`** at the repo root (last touched at v2.3.1, Next.js scaffold). The plugin manifest lives in `code-et-implementer/.claude-plugin/plugin.json`; the root `package.json` was unused since v3.x.
+
+### Reference inputs baked in
+
+- User notes: `Rust Code Quality and Review Tools.md` — the 4-element framework, 5 slop categories, and Uncle Bob's Clean Architecture excerpt are embedded in `docs/anti-slop.md` and `docs/architecture.md`.
+- Tool reality verified during planning: `cargo-coupling`, `loctree`, `rustqual` from the user's notes do not exist on crates.io and were replaced with verified tools (`cargo-machete`, `cargo-deny`, `cargo-audit`, `cargo-nextest`, `clippy::cognitive_complexity`, `cargo-modules`, `dioxus-cli`).
+
+### Migration
+
+- Existing user projects on `code-et` v3.8.x continue to work unchanged. To adopt the audit gate on an existing Rust repo: `/code:install-ci`. To start a new project: `/code:bootstrap`.
+- The TypeScript path is gone from the workflow output, but the plugin's own runtime/tests are unchanged. Legacy TS projects can still use `/code:go`, `/code:grill`, `/code:prd`, `/code:plan-issue`, `/code:implement` — the `metadata.layer` requirement only fires when the project's repo root has `Cargo.toml`.
+
+### v3.10.0 preview
+
+- `/code:audit` will mirror the CI gate locally for fast feedback before pushing. Single source of truth: the CI yaml shipped here.
+
 ## [3.8.1] - 2026-04-30
 
 ### Changed — `/code:go` portability

@@ -38,7 +38,8 @@ Each subagent starts cold. Send one comprehensive first turn — intent, constra
 Run `<metadata.verification>`. Must exit 0. All existing tests must still pass.
 
 ## Constraints
-- Follow rules in `code-et-implementer/CLAUDE.md` (Brevity, Context Hygiene, TypeScript strict, ≤600 lines/file)
+- Follow rules in `code-et-implementer/CLAUDE.md` (Brevity, Context Hygiene, Clean Architecture (Rust) controlling rules, ≤600 lines/file). For Rust projects, see `code-et-implementer/docs/architecture.md` for layer rules and `code-et-implementer/docs/anti-slop.md` for the anti-slop hard rules
+- Each new or modified file belongs to exactly one layer (`domain` | `application` | `infrastructure` | `interface` | `chore`); imports point inward
 - Read in slices: `Read(offset, limit)` for files >200 lines; never re-read the same file twice for different blocks
 - Delegate breadth to `Agent(subagent_type: "Explore")` if the fix path is unclear — do not Grep-and-Read your way through unknown territory
 - Every acceptance criterion must have a corresponding test

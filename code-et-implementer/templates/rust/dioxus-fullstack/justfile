@@ -1,0 +1,60 @@
+# {{name}} — code-et bootstrapped pure-Rust full-stack project.
+
+set shell := ["bash", "-uc"]
+
+default:
+    @just --list
+
+# Quick check of the whole workspace.
+check:
+    cargo check --workspace --all-features
+
+# Run all tests via cargo-nextest.
+test:
+    cargo nextest run --workspace --all-features
+
+# Format check (CI-equivalent).
+fmt:
+    cargo fmt --all -- --check
+
+# Auto-format.
+fmt-fix:
+    cargo fmt --all
+
+# Clippy with deny-warnings (CI-equivalent).
+lint:
+    cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+# Local mirror of the CI audit pipeline.
+audit:
+    just fmt
+    just lint
+    bash scripts/layer-deps-validator.sh
+    cargo machete
+    cargo audit
+    cargo deny check
+    just test
+
+# Apply migrations.
+db-migrate:
+    sqlx migrate run
+
+# Run the axum + dioxus-fullstack server.
+run-server:
+    cargo run -p server
+
+# Run the dioxus-desktop renderer.
+run-desktop:
+    cargo run -p desktop
+
+# Serve the WASM web app on :8080.
+run-web:
+    dx serve --platform web
+
+# Build the mobile app (requires xcode for iOS, android-ndk for Android).
+build-mobile:
+    dx build --platform mobile
+
+# Regenerate sqlx offline cache after schema or query changes.
+sqlx-prepare:
+    cargo sqlx prepare --workspace

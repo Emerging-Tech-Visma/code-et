@@ -1,0 +1,6 @@
+# code-et anti-slop thresholds.
+# See code-et-implementer/docs/anti-slop.md §"Complexity hotspots".
+cognitive-complexity-threshold = 15
+type-complexity-threshold = 250
+too-many-arguments-threshold = 6
+too-many-lines-threshold = 100

@@ -4,14 +4,14 @@
     "name": "Kennet Kusk"
   },
   "metadata": {
-    "description": "Feature + bug lanes. Grill ideas into PRDs, decompose with LSP, implement with parallel agents.",
-    "version": "3.8.1"
+    "description": "Pure-Rust Clean Architecture workflow. Bootstrap axum+sqlx+dioxus+tokio, plan with PRDs, implement with parallel agents, audit on CI.",
+    "version": "3.9.0"
   },
   "plugins": [
     {
       "name": "code",
       "source": "./code-et-implementer",
-      "description": "Plan with LSP, implement with parallel agents. Use commit-commands for PRs."
+      "description": "Bootstrap pure-Rust Clean Architecture projects. Plan with LSP, implement with parallel agents, enforce anti-slop on CI."
     }
   ]
 }
