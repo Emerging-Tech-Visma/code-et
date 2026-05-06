@@ -35,8 +35,11 @@ The runner:
 
 The runner streams stage progress and the final report path on stderr. On failure, the report file lists the offending stage and the closest `path:line` extracted from its log.
 
+## Flags
+
+- `--review` — after stages, captures `git diff <merge-base>..HEAD` into the report under a `## Review` section, queued for the engineering plugin's `code-review` skill (US-5). Requires the engineering plugin to be installed; missing → non-zero exit with an install hint.
+
 ## Notes
 
 - The runner is layer `chore` — code-et plugin tooling, not a Rust workspace.
-- The `--review` flag is reserved for T6 — not implemented yet.
 - No org-specific tokens — the runner reads the target from CWD or the git root only.

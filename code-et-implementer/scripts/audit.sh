@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 # audit.sh — local mirror of the v3.9.0 CI audit gate.
 #
-# Usage: audit.sh [--fast | --stage <n>] [target-dir]
+# Usage: audit.sh [--fast | --stage <n>] [--review] [target-dir]
 #   target-dir defaults to the current working directory.
 #   --fast      runs only stages 1-2 (fmt + clippy) — fast subset for
 #               verify-gate and the implement skill chain.
 #   --stage <n> runs only the n-th stage (1-indexed) from the parsed yaml.
 #   --fast and --stage are mutually exclusive.
+#   --review    chains the engineering plugin's code-review skill against the
+#               working diff (AC-5.1). Requires the engineering plugin to be
+#               installed (AC-5.3); the runner detects it via SKILL.md presence.
 #
 # Behaviour:
 #   - If no Cargo.toml is found at the target dir or its git root, exits 0
@@ -17,6 +20,9 @@
 #     findings; the exit code stays 0 if no other stage fails (US-9).
 #   - Genuine stage failures collect a finding and cause a non-zero exit.
 #   - Always writes <target>/.claude/audit-<YYYYMMDD-HHMMSS>.md (UTC).
+#   - With --review: after stages, captures `git diff <merge-base>..HEAD` and
+#     hands it to audit-report.sh which appends a `## Review` section. If the
+#     engineering plugin is not detected, exits non-zero with an install hint.
 #
 # Severity mapping per stage:
 #   fmt                      → MEDIUM
@@ -36,15 +42,16 @@ REPORT_SCRIPT="$SCRIPT_DIR/audit-report.sh"
 
 # Flag parsing — the only place stage selection happens. The rest of the
 # runner stays oblivious. MODE is one of: all | fast | stage. STAGE_NUM is
-# only meaningful when MODE=stage.
+# only meaningful when MODE=stage. REVIEW=1 enables --review chaining (US-5).
 MODE="all"
 STAGE_NUM=""
+REVIEW=0
 POSITIONAL=()
 
 print_usage() {
   local stages
   stages="$(bash "$STAGES_SCRIPT")" || return 1
-  echo "Usage: audit.sh [--fast | --stage <n>] [target-dir]" >&2
+  echo "Usage: audit.sh [--fast | --stage <n>] [--review] [target-dir]" >&2
   echo "" >&2
   echo "Valid stages:" >&2
   local i=0
@@ -80,6 +87,10 @@ while [ $# -gt 0 ]; do
       MODE="stage"
       STAGE_NUM="$2"
       shift 2
+      ;;
+    --review)
+      REVIEW=1
+      shift
       ;;
     --)
       shift
@@ -227,13 +238,56 @@ extract_citation() {
   echo "Cargo.toml:1"
 }
 
+# Detect engineering plugin's code-review skill. Returns 0 and prints the
+# SKILL.md path on stdout; 1 if absent. Search order:
+#   1. ${CLAUDE_PLUGIN_ROOT}/../engineering/skills/code-review/SKILL.md
+#   2. ${HOME}/.claude/plugins/cache/*/engineering/skills/code-review/SKILL.md
+#   3. <workspace>/.claude/plugins/engineering/skills/code-review/SKILL.md
+detect_engineering_plugin() {
+  local cand
+  if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
+    cand="$CLAUDE_PLUGIN_ROOT/../engineering/skills/code-review/SKILL.md"
+    if [ -f "$cand" ]; then echo "$cand"; return 0; fi
+  fi
+  if [ -n "${HOME:-}" ]; then
+    for cand in "$HOME"/.claude/plugins/cache/*/engineering/skills/code-review/SKILL.md; do
+      [ -f "$cand" ] && { echo "$cand"; return 0; }
+    done
+  fi
+  cand="$WORKSPACE/.claude/plugins/engineering/skills/code-review/SKILL.md"
+  if [ -f "$cand" ]; then echo "$cand"; return 0; fi
+  return 1
+}
+
+# Capture git diff against the merge base of the current branch. Falls back
+# through origin/main → main → HEAD~1 → empty. If the merge-base resolves to
+# HEAD itself (e.g. on main with no upstream), drops to HEAD~1 so there's
+# something to review. Writes the diff to $1.
+capture_review_diff() {
+  local out="$1" base="" head=""
+  head="$(git -C "$WORKSPACE" rev-parse HEAD 2>/dev/null || true)"
+  base="$(git -C "$WORKSPACE" merge-base origin/main HEAD 2>/dev/null || true)"
+  if [ -z "$base" ] || [ "$base" = "$head" ]; then
+    base="$(git -C "$WORKSPACE" merge-base main HEAD 2>/dev/null || true)"
+  fi
+  if [ -z "$base" ] || [ "$base" = "$head" ]; then
+    base="$(git -C "$WORKSPACE" rev-parse HEAD~1 2>/dev/null || true)"
+  fi
+  if [ -n "$base" ] && [ "$base" != "$head" ]; then
+    git -C "$WORKSPACE" diff "$base"..HEAD > "$out" 2>/dev/null || : > "$out"
+  else
+    : > "$out"
+  fi
+}
+
 REPORT_DIR="$WORKSPACE/.claude"
 TIMESTAMP="$(date -u +%Y%m%d-%H%M%S)"
 REPORT_PATH="$REPORT_DIR/audit-$TIMESTAMP.md"
 mkdir -p "$REPORT_DIR"
 
 FINDINGS_TMP="$(mktemp -t code-et-audit.XXXXXX)"
-trap 'rm -f "$FINDINGS_TMP"' EXIT
+REVIEW_TMP="$(mktemp -t code-et-audit-review.XXXXXX)"
+trap 'rm -f "$FINDINGS_TMP" "$REVIEW_TMP"' EXIT
 
 OVERALL_FAIL=0
 
@@ -289,7 +343,21 @@ while IFS='|' read -r name cmd; do
   rm -f "$stage_log"
 done <<< "$STAGES"
 
-bash "$REPORT_SCRIPT" "$REPORT_PATH" < "$FINDINGS_TMP"
+REPORT_ARGS=("$REPORT_PATH")
+
+# Review wiring only attaches when static stages pass — a failing audit is
+# already actionable without prose review noise.
+if [ "$REVIEW" -eq 1 ] && [ "$OVERALL_FAIL" -eq 0 ]; then
+  if ! SKILL_PATH="$(detect_engineering_plugin)"; then
+    echo "audit: engineering plugin not installed; run /plugin install engineering to enable --review" >&2
+    exit 1
+  fi
+  echo "audit: --review enabled — capturing diff for $SKILL_PATH" >&2
+  capture_review_diff "$REVIEW_TMP"
+  REPORT_ARGS+=(--review-file "$REVIEW_TMP")
+fi
+
+bash "$REPORT_SCRIPT" "${REPORT_ARGS[@]}" < "$FINDINGS_TMP"
 echo "audit: report written to $REPORT_PATH" >&2
 
 # AC-12.2: on failure, surface the report's summary line on stderr so the user
