@@ -2,37 +2,17 @@
 # audit.sh — local mirror of the v3.9.0 CI audit gate.
 #
 # Usage: audit.sh [--fast | --stage <n>] [--review] [target-dir]
+#   --fast      runs only stages 1-2 (fmt + clippy)
+#   --stage <n> runs only the n-th stage (1-indexed) from the parsed yaml
+#   --review    chains the engineering plugin's code-review skill against
+#               `git diff <merge-base>..HEAD`; missing plugin → exit non-zero
 #   target-dir defaults to the current working directory.
-#   --fast      runs only stages 1-2 (fmt + clippy) — fast subset for
-#               verify-gate and the implement skill chain.
-#   --stage <n> runs only the n-th stage (1-indexed) from the parsed yaml.
-#   --fast and --stage are mutually exclusive.
-#   --review    chains the engineering plugin's code-review skill against the
-#               working diff (AC-5.1). Requires the engineering plugin to be
-#               installed (AC-5.3); the runner detects it via SKILL.md presence.
 #
-# Behaviour:
-#   - If no Cargo.toml is found at the target dir or its git root, exits 0
-#     with "not a Rust workspace, skipping" on stderr (AC-6.1). No report.
-#   - Otherwise parses the workflow yaml via audit-stages.sh and runs every
-#     stage in declared order. Stages whose binary (or referenced script) is
-#     not on PATH emit a WARNING and are skipped, recorded as LOW-severity
-#     findings; the exit code stays 0 if no other stage fails (US-9).
-#   - Genuine stage failures collect a finding and cause a non-zero exit.
-#   - Always writes <target>/.claude/audit-<YYYYMMDD-HHMMSS>.md (UTC).
-#   - With --review: after stages, captures `git diff <merge-base>..HEAD` and
-#     hands it to audit-report.sh which appends a `## Review` section. If the
-#     engineering plugin is not detected, exits non-zero with an install hint.
-#
-# Severity mapping per stage:
-#   fmt                      → MEDIUM
-#   clippy (deny warnings)   → HIGH
-#   layer-deps validator     → HIGH
-#   cargo-machete            → MEDIUM
-#   cargo-audit              → CRITICAL
-#   cargo-deny               → CRITICAL
-#   tests                    → HIGH
-#   (default)                → MEDIUM
+# Exits 0 with "not a Rust workspace, skipping" on stderr if no Cargo.toml
+# is found at target or its git root. Otherwise parses the workflow yaml
+# and runs every stage in order; missing tools (cargo-machete/audit/deny,
+# cargo-nextest, layer-deps script) emit a WARNING and are recorded as
+# LOW-severity findings. Always writes <target>/.claude/audit-<UTC>.md.
 
 set -euo pipefail
 
@@ -40,9 +20,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGES_SCRIPT="$SCRIPT_DIR/audit-stages.sh"
 REPORT_SCRIPT="$SCRIPT_DIR/audit-report.sh"
 
-# Flag parsing — the only place stage selection happens. The rest of the
-# runner stays oblivious. MODE is one of: all | fast | stage. STAGE_NUM is
-# only meaningful when MODE=stage. REVIEW=1 enables --review chaining (US-5).
 MODE="all"
 STAGE_NUM=""
 REVIEW=0
@@ -114,21 +91,21 @@ TARGET="$(cd "$TARGET_RAW" 2>/dev/null && pwd)" || {
   exit 2
 }
 
-# Validate --stage <n> against the parsed yaml *before* the workspace guard so
-# bad input always exits non-zero, regardless of whether the target is a Rust
-# workspace.
+STAGES="$(bash "$STAGES_SCRIPT")"
+STAGE_COUNT="$(printf '%s\n' "$STAGES" | grep -c '|' || true)"
+
+# --stage <n> validation runs before the workspace guard so bad input always
+# exits non-zero, regardless of whether the target is a Rust workspace.
 if [ "$MODE" = "stage" ]; then
-  STAGE_LIST_FOR_VALIDATE="$(bash "$STAGES_SCRIPT")"
-  STAGE_COUNT_VALIDATE="$(printf '%s\n' "$STAGE_LIST_FOR_VALIDATE" | grep -c '|' || true)"
-  if ! [[ "$STAGE_NUM" =~ ^[1-9][0-9]*$ ]] || [ "$STAGE_NUM" -gt "$STAGE_COUNT_VALIDATE" ]; then
-    echo "audit.sh: invalid stage '$STAGE_NUM' (valid: 1..$STAGE_COUNT_VALIDATE)" >&2
+  if ! [[ "$STAGE_NUM" =~ ^[1-9][0-9]*$ ]] || [ "$STAGE_NUM" -gt "$STAGE_COUNT" ]; then
+    echo "audit.sh: invalid stage '$STAGE_NUM' (valid: 1..$STAGE_COUNT)" >&2
     print_usage
     exit 2
   fi
 fi
 
-# Workspace guard. Check the target dir first (the fixture is a Rust workspace
-# nested inside a non-Rust outer repo); fall back to the git root if any.
+# Target dir checked first (fixture is a Rust workspace nested inside a
+# non-Rust outer repo); git root fallback only if target itself has no Cargo.toml.
 find_workspace_root() {
   local dir="$1"
   if [ -f "$dir/Cargo.toml" ]; then
@@ -150,7 +127,6 @@ if ! WORKSPACE="$(find_workspace_root "$TARGET")"; then
   exit 0
 fi
 
-# Severity mapping per stage name.
 severity_for() {
   case "$1" in
     "fmt") echo "MEDIUM" ;;
@@ -164,19 +140,14 @@ severity_for() {
   esac
 }
 
-# Probe whether a stage's executable is available. Returns 0 if runnable.
-# For `cargo <sub> ...` forms, checks `cargo-<sub>` on PATH (cargo dispatches
-# to it). For `bash <path> ...`, checks the path exists.
 stage_runnable() {
-  local cmd="$1"
-  local first
+  local cmd="$1" first sub path
   first="$(echo "$cmd" | awk '{print $1}')"
   case "$first" in
     cargo)
-      local sub
       sub="$(echo "$cmd" | awk '{print $2}')"
-      # `cargo fmt`, `cargo clippy` ship with the toolchain — cargo handles them
-      # even though `cargo-fmt` / `cargo-clippy` are present via rustup.
+      # `cargo fmt`/`cargo clippy` ship with the toolchain via rustup — they
+      # are dispatched by `cargo` itself, not by separate `cargo-fmt` binaries.
       if [ "$sub" = "fmt" ] || [ "$sub" = "clippy" ]; then
         command -v cargo >/dev/null
         return $?
@@ -184,7 +155,6 @@ stage_runnable() {
       command -v "cargo-$sub" >/dev/null
       ;;
     bash)
-      local path
       path="$(echo "$cmd" | awk '{print $2}')"
       [ -f "$WORKSPACE/$path" ]
       ;;
@@ -239,10 +209,7 @@ extract_citation() {
 }
 
 # Detect engineering plugin's code-review skill. Returns 0 and prints the
-# SKILL.md path on stdout; 1 if absent. Search order:
-#   1. ${CLAUDE_PLUGIN_ROOT}/../engineering/skills/code-review/SKILL.md
-#   2. ${HOME}/.claude/plugins/cache/*/engineering/skills/code-review/SKILL.md
-#   3. <workspace>/.claude/plugins/engineering/skills/code-review/SKILL.md
+# SKILL.md path on stdout; 1 if absent.
 detect_engineering_plugin() {
   local cand
   if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ]; then
@@ -259,10 +226,8 @@ detect_engineering_plugin() {
   return 1
 }
 
-# Capture git diff against the merge base of the current branch. Falls back
-# through origin/main → main → HEAD~1 → empty. If the merge-base resolves to
-# HEAD itself (e.g. on main with no upstream), drops to HEAD~1 so there's
-# something to review. Writes the diff to $1.
+# Capture diff against merge-base, falling through origin/main → main → HEAD~1
+# so a branch with no upstream still gets something reviewable. Writes to $1.
 capture_review_diff() {
   local out="$1" base="" head=""
   head="$(git -C "$WORKSPACE" rev-parse HEAD 2>/dev/null || true)"
@@ -291,18 +256,9 @@ trap 'rm -f "$FINDINGS_TMP" "$REVIEW_TMP"' EXIT
 
 OVERALL_FAIL=0
 
-# Read the stage list once. Each line is `name|command`.
-STAGES="$(bash "$STAGES_SCRIPT")"
-
-# Apply MODE filter. STAGE_NUM was validated above against the parsed yaml.
 case "$MODE" in
-  fast)
-    # Stages 1-2 (fmt + clippy).
-    STAGES="$(printf '%s\n' "$STAGES" | sed -n '1,2p')"
-    ;;
-  stage)
-    STAGES="$(printf '%s\n' "$STAGES" | sed -n "${STAGE_NUM}p")"
-    ;;
+  fast)  STAGES="$(printf '%s\n' "$STAGES" | sed -n '1,2p')" ;;
+  stage) STAGES="$(printf '%s\n' "$STAGES" | sed -n "${STAGE_NUM}p")" ;;
   all) ;;
 esac
 
@@ -357,17 +313,13 @@ if [ "$REVIEW" -eq 1 ] && [ "$OVERALL_FAIL" -eq 0 ]; then
   REPORT_ARGS+=(--review-file "$REVIEW_TMP")
 fi
 
-bash "$REPORT_SCRIPT" "${REPORT_ARGS[@]}" < "$FINDINGS_TMP"
+SUMMARY_LINE="$(bash "$REPORT_SCRIPT" "${REPORT_ARGS[@]}" < "$FINDINGS_TMP")"
 echo "audit: report written to $REPORT_PATH" >&2
 
-# AC-12.2: on failure, surface the report's summary line on stderr so the user
-# sees the highest-severity finding without opening the file. The writer owns
-# the ranking; we just re-echo its first line if it looks like a summary.
-if [ "$OVERALL_FAIL" -ne 0 ]; then
-  first_line="$(head -n 1 "$REPORT_PATH" 2>/dev/null || true)"
-  if [[ "$first_line" =~ ^\[(CRITICAL|HIGH|MEDIUM)\]\ .*\ —\ fix: ]]; then
-    echo "$first_line" >&2
-  fi
+# AC-12.2: on failure, surface the writer's summary line on stderr so the user
+# sees the highest-severity finding without opening the report.
+if [ "$OVERALL_FAIL" -ne 0 ] && [ -n "$SUMMARY_LINE" ]; then
+  echo "$SUMMARY_LINE" >&2
 fi
 
 exit "$OVERALL_FAIL"

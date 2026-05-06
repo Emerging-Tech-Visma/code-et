@@ -143,3 +143,9 @@ emit_review() {
 
   emit_review
 } > "$REPORT_PATH"
+
+# Echo the summary line (if any) on stdout so callers can surface it without
+# re-reading the report file.
+if [ -n "$SUMMARY" ]; then
+  printf '%s\n' "$SUMMARY"
+fi
