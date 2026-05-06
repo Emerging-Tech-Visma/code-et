@@ -1,6 +1,6 @@
 ---
 name: architecture
-description: Rust Clean Architecture doctrine for code-et. Loaded on demand by /code:bootstrap, /code:go, /code:plan-issue, /code:implement.
+description: Rust Clean Architecture doctrine for code-et. Loaded on demand by /code:start, /code:fix, /code:plan, /code:ship.
 applies_to: rust
 ---
 

@@ -42,4 +42,4 @@ Cadence: review every quarter even if nothing has shipped. Rust crate ecosystems
 | Dioxus 0.x breaking changes between minors | The smoke project's `apps/{web,desktop,mobile}/main.rs` is the canary; if any fails to build, hold the bump until reviewed. |
 | `sqlx` schema incompatibility on bump | The smoke project's `migrations/20250101000000_init.sql` runs against both Postgres and SQLite in CI; if either fails, fix the migration before merging the template bump. |
 | GHA action removal | Pin majors; check the action's repo for archived/deprecated status before bumping. |
-| Mobile target moves faster than web/desktop | If the bump breaks only mobile, gate the mobile app behind a feature flag in the bump PR. The `--targets` flag in `/code:bootstrap` already supports excluding mobile. |
+| Mobile target moves faster than web/desktop | If the bump breaks only mobile, gate the mobile app behind a feature flag in the bump PR. The `--targets` flag in `/code:start` already supports excluding mobile. |

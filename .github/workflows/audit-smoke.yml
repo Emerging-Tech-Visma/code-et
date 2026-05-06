@@ -1,0 +1,71 @@
+name: audit-smoke
+
+# Runs /code:audit's local script against the bundled Rust fixture on every PR.
+# The fixture (code-et-implementer/templates/rust/dioxus-fullstack/) doubles as
+# the audit's regression suite — if the audit can't pass cleanly here, neither
+# can the v3.9.0 CI gate it mirrors. Mirrors the toolchain setup from
+# code-et-implementer/templates/shared/.github/workflows/code-et-audit.yml.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  audit-fixture:
+    runs-on: ubuntu-latest
+
+    env:
+      CARGO_TERM_COLOR: always
+      FIXTURE: code-et-implementer/templates/rust/dioxus-fullstack
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install GTK + WebKit + xdo system libs (dioxus-desktop)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgtk-3-dev libglib2.0-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev \
+            libxdo-dev
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: code-et-implementer/templates/rust/dioxus-fullstack
+
+      - name: install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: install cargo-machete
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete
+
+      - name: install cargo-audit
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+
+      - name: install cargo-deny
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: run audit against fixture
+        run: bash code-et-implementer/scripts/audit.sh code-et-implementer/templates/rust/dioxus-fullstack
+
+      - name: upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          path: code-et-implementer/templates/rust/dioxus-fullstack/.claude/audit-*.md
+          if-no-files-found: ignore

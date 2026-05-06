@@ -10,9 +10,6 @@ domain = { workspace = true }
 application = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-async-trait = { workspace = true }
-anyhow = { workspace = true }
-tracing = { workspace = true }
 uuid = { workspace = true }
 
 # UI
@@ -23,6 +20,12 @@ axum = { workspace = true, optional = true }
 tower = { workspace = true, optional = true }
 tower-http = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
+
+# cargo-machete misses feature-gated optional deps; tower/tower-http/tokio
+# are wired into the `server` feature even when not directly imported by
+# the current handler set. Remove ignores once a handler imports them.
+[package.metadata.cargo-machete]
+ignored = ["tokio", "tower", "tower-http"]
 
 [features]
 default = ["server"]

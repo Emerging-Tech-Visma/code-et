@@ -10,4 +10,5 @@ license.workspace = true
 serde = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
-time = { workspace = true }
+# Add `time = { workspace = true }` when you introduce a value object that
+# needs DateTime/Duration. The workspace already pins it.

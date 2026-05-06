@@ -10,8 +10,6 @@ name = "server"
 path = "src/main.rs"
 
 [dependencies]
-domain = { workspace = true }
-application = { workspace = true }
 infrastructure = { workspace = true }
 interface = { workspace = true, features = ["server"] }
 axum = { workspace = true }
@@ -21,3 +19,8 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 secrecy = { workspace = true }
+# As the composition root grows to instantiate use cases directly, add:
+#   domain = { workspace = true }
+#   application = { workspace = true }
+# These are removed for now to keep the audit gate clean — `interface::http::router`
+# already wires the sample CreateUser path.

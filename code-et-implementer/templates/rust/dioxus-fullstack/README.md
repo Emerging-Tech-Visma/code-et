@@ -1,6 +1,6 @@
 # {{name}}
 
-Pure-Rust full-stack project bootstrapped with [code-et](https://github.com/Emerging-Tech-Visma/code-et) v3.9.0+.
+Pure-Rust full-stack project bootstrapped with [code-et](https://github.com/Emerging-Tech-Visma/code-et) v4.0+.
 
 **Stack:** axum + sqlx + Dioxus 0.7+ + tokio. **Frontend:** Dioxus on web, desktop, and mobile from one component tree. **Database:** SQLite for local, PostgreSQL on GCP Cloud SQL for production.
 
@@ -45,21 +45,43 @@ cargo install dioxus-cli
 cargo install cargo-udeps
 ```
 
-If `/code:bootstrap` was invoked with `--install-tools`, these are already on your machine.
+If `/code:start` was invoked with `--install-tools`, these are already on your machine.
 
-## Adding a feature
-
-Use code-et's feature lane:
+## Daily workflow
 
 ```
-/code:grill              # refine the idea
-/code:prd                # write a PRD into plans/<slug>.md
-/code:plan-issue         # break PRD into vertical-slice tasks
-/code:implement          # parallel agents in worktrees
-/commit-push-pr          # PR; CI runs the audit gate
+# Bug
+/code:fix "<one-line bug>"   # intake → Task Brief → you implement → /commit-push-pr
+
+# Feature
+/code:plan "<idea>"          # refined brief → PRD on disk → vertical-slice tasks
+/code:ship                   # parallel worktree agents + post-merge audit (1 auto-retry)
+/code:review                 # full audit + diff review (pre-merge gate)
+/commit-push-pr              # PR; CI runs the same audit pipeline
 ```
 
 Each task carries `metadata.layer ∈ {domain, application, infrastructure, interface, chore}`. Vertical slices may span layers; each *file* belongs to exactly one. Imports point inward.
+
+## Deploy & upload — always via scripts
+
+**Discipline:** never deploy or upload {{name}} via raw `cargo run`, `docker push`, `gcloud run deploy`, `gsutil cp`, `scp`, or any other ad-hoc command typed into a shell. All paths route through:
+
+```
+just deploy staging                # bash scripts/deploy.sh staging
+just deploy prod                   # bash scripts/deploy.sh prod
+just upload web staging            # bash scripts/upload.sh web staging
+just upload desktop prod           # bash scripts/upload.sh desktop prod
+```
+
+The scripts are starting points — host-specific commands are marked `# TODO:` blocks (Cloud Run / GKE / Fly / your VM). Fill them in once for your project; after that, every deploy is:
+
+1. **Pre-flight:** clean tree, audit gate green, required tools on PATH.
+2. **Build:** container image tagged with `git rev-parse --short HEAD`.
+3. **Migrate:** `sqlx migrate run` against the target DB (Cloud SQL Auth Proxy + IAM token in prod).
+4. **Roll out:** push image, update Cloud Run revision (or your equivalent).
+5. **Smoke check:** curl `/healthz`, expect 200.
+
+This is the only sane way to ship Rust workspaces with `sqlx::query!` macros — the build needs the right `DATABASE_URL` (or offline `sqlx-data.json`), and the deploy needs migrations to land before the new image gets traffic. A script enforces that order; ad-hoc commands forget it.
 
 ## Doctrine
 

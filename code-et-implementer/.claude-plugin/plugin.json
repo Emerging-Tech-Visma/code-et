@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "3.9.0",
-  "description": "Pure-Rust Clean Architecture workflow. Bootstrap axum+sqlx+dioxus+tokio projects, plan with PRDs, implement with parallel agents, audit on CI.",
+  "version": "4.0.0",
+  "description": "Pure-Rust Clean Architecture workflow. Six commands: start, fix, plan, ship, review, install-ci. Always-latest deps, CI audit gate, anti-slop enforced.",
   "author": {
     "name": "Kennet Kusk"
   },

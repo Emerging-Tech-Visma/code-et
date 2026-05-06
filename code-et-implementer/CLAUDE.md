@@ -1,40 +1,36 @@
-# code-et
+# code-et v4.x
 
-Task-driven coding workflow with parallel agents in worktree isolation.
+Pure-Rust Clean Architecture workflow. Stack: `axum + sqlx + Dioxus 0.7+ + tokio`. One frontend codebase renders to web, desktop, and mobile.
 
 ## Git Rules
 
-- **Never push directly to main** — always create a feature branch and PR
-- **Branch naming:** `feature/<name>`, `fix/<name>`, `chore/<name>`
-- **Never force push** — rebase locally, push normally
+- **Never push directly to main** — always create a feature branch and PR.
+- **Branch naming:** `feature/<name>`, `fix/<name>`, `chore/<name>`.
+- **Never force push** — rebase locally, push normally.
 
 ## Commands
 
 | Task | Command |
 |------|---------|
-| Single-bug intake | `/code:go` (scope → Task Brief) |
-| Refine an idea | `/code:grill` (one-question-at-a-time interrogation) |
-| Synthesize PRD | `/code:prd` (idea/conversation → `plans/YYYY-MM-DD-<slug>.md`) |
-| Plan PRD | `/code:plan-issue` (PRD → vertical-slice tasks) |
-| Implement tasks | `/code:implement` (parallel agents in worktrees) |
+| Scaffold a new project | `/code:start <name>` |
+| Add CI to existing repo | `/code:install-ci` |
+| Single bug fix | `/code:fix` (intake → Task Brief; you implement) |
+| Feature, end-to-end | `/code:plan` (idea → PRD → tasks) → `/code:ship` (parallel agents + audit) |
+| Pre-merge gate | `/code:review` (audit + diff review) |
 
 For commits and PRs use `commit-commands` plugin (`/commit`, `/commit-push-pr`).
-For code review use `code-review` plugin (`/code-review`, `/simplify`).
-For CLAUDE.md maintenance use `claude-md-management` plugin (`/revise-claude-md`, `/claude-md-improver`).
 
 ## Workflow — two lanes
 
-**Bug lane** (single fix): `/code:go` → implement directly → `/commit-push-pr`
+**Bug lane.** `/code:fix` produces a Task Brief and stops. Most bugs are 1-3 file edits — no orchestration needed. If the work spans multiple coherent vertical slices (UI ↔ logic ↔ API ↔ DB), it's a feature in disguise — write a PRD instead.
 
-**Feature lane** (PRD-driven): `/code:grill` (optional) → `/code:prd` → `/code:plan-issue` → `/code:implement` → `/commit-push-pr`
+**Feature lane.** `/code:plan` (one extended turn: refined brief → PRD on disk → vertical-slice tasks) → `/code:ship` (parallel worktree agents + post-merge audit + 1 auto-retry on CRITICAL/HIGH) → `/code:review` (pre-merge gate) → `/commit-push-pr`.
 
-`/code:go` does NOT chain into `/code:plan-issue` or `/code:implement` — it stops at the Task Brief. If a "bug" needs vertical decomposition (UI ↔ logic ↔ API ↔ DB), it's a feature in disguise — write a PRD.
-
-`/code:plan-issue` is PRD-only. Each task is a **vertical slice** (UI ↔ logic ↔ API ↔ DB, end-to-end testable). When a slice supersedes existing code, deletion of the old code is part of the same commit — no parallel utilities, no `// TODO: remove old X`.
+Each task is a **vertical slice**: UI ↔ logic ↔ API ↔ DB, end-to-end testable. When a slice supersedes existing code, deletion of the old code is part of the same commit — no parallel utilities, no `// TODO: remove old X`.
 
 ## Task Metadata Convention
 
-Tasks created with `TaskCreate` should include metadata:
+Tasks created with `TaskCreate` carry:
 
 ```
 metadata: {
@@ -42,24 +38,26 @@ metadata: {
   files: ["crates/<layer>/src/path/to/file.rs:42"],
   expected_outcome: "what success looks like",
   rationale: "why this task exists — the constraint or decision driving it",
-  user_story: "US-N" | "AC-N.M" | "chore:<reason>",  // feature lane only
+  user_story: "US-N" | "AC-N.M" | "chore:<reason>",
   layer: "domain" | "application" | "infrastructure" | "interface" | "chore"
 }
 ```
 
-`rationale` is mandatory. Subagents in `/code:implement` start cold — they need the *why*, not just the *what*, to make judgment calls.
+`rationale` is mandatory. Subagents in `/code:ship` start cold — they need the *why*, not just the *what*, to make judgment calls.
 
-`layer` is mandatory on Rust projects (skip for non-Rust legacy projects). Each *file* declares its layer; vertical slices may span layers.
+`layer` is mandatory. Each *file* declares its layer; vertical slices may span layers.
 
 ## Code Standards
 
-- Rust 2024 edition; `cargo clippy --all-targets -- -D warnings`; `cargo fmt --check`
-- Max 600 lines per file
-- Compose at app boundaries (`apps/<name>/main.rs`); never instantiate `infrastructure` inside `interface` — pass via constructor or DI trait
+- Rust 2024 edition; `cargo clippy --all-targets -- -D warnings`; `cargo fmt --check`.
+- Max 600 lines per file.
+- Compose at app boundaries (`apps/<name>/main.rs`); never instantiate `infrastructure` inside `interface` — pass via constructor or DI trait.
+- All SQL through `sqlx::query!` / `query_as!` (compile-time-checked). Raw `sqlx::query` is forbidden in production code.
+- Forward-only migrations under `migrations/`. Each rollback is its own forward migration.
 
-## Clean Architecture (Rust) — controlling rules
+## Clean Architecture — controlling rules
 
-When operating on a Rust project, apply Clean Architecture per [`docs/architecture.md`](docs/architecture.md). Each new or modified file declares its layer (`domain` | `application` | `infrastructure` | `interface` | `chore`) in `metadata.layer`. Imports point inward; the `Cargo.toml` workspace deps already enforce this — violating imports fail at `cargo build`.
+Apply Clean Architecture per [`docs/architecture.md`](docs/architecture.md). Each new or modified file declares its layer (`domain` | `application` | `infrastructure` | `interface` | `chore`) in `metadata.layer`. Imports point inward; the workspace `Cargo.toml` deps already enforce this — violating imports fail at `cargo build`.
 
 UI: Dioxus 0.7+ for web, desktop, and mobile from one component tree. DB: Postgres on GCP Cloud SQL for prod, SQLite for local. `sqlx` with `query!` (compile-time-checked); never raw SQL. Forward-only migrations.
 
@@ -91,8 +89,12 @@ Token waste = worse plans + worse code.
 
 ## FILE-REFERENCE.md Lifecycle
 
-`FILE-REFERENCE.md` is updated **only after a PR merges to main** that touched structural files. For Rust projects: `crates/*/Cargo.toml`, `apps/*/Cargo.toml`, root `Cargo.toml`, `migrations/*`, or new top-level apps/crates. For TS legacy projects: `*/page.tsx`, `*/route.ts`, `*/route.tsx`, `*/index.tsx`, `*/layout.tsx`, or new top-level apps/packages. Workflow:
+`FILE-REFERENCE.md` is updated **only after a PR merges to main** that touched structural files: `crates/*/Cargo.toml`, `apps/*/Cargo.toml`, root `Cargo.toml`, `migrations/*`, or new top-level apps/crates. Workflow:
 
 1. All changes start on a branch (`feature/`, `fix/`, `chore/`) and ship via PR.
-2. After merging the PR to main, if the diff touched structural files, run `/code:go update` to refresh `FILE-REFERENCE.md`. Commit the refresh on a follow-up branch + PR.
+2. After merging the PR to main, if the diff touched structural files, run `/code:fix update` to refresh `FILE-REFERENCE.md`. Commit the refresh on a follow-up branch + PR.
 3. On a feature branch, do **not** edit `FILE-REFERENCE.md` — it tracks merged-to-main reality, not in-flight work.
+
+## Always-latest dependencies
+
+`/code:start` runs `cargo update` post-scaffold so every dep is at its latest semver-compatible patch. Major bumps (e.g., dioxus 0.7→0.8 once it ships) need a manual `cargo upgrade` (cargo-edit) and a `just audit` smoke. The CI gate's `cargo audit` step catches yanked or vulnerable pins on every PR.

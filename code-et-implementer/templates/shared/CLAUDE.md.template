@@ -27,7 +27,16 @@ This project follows the doctrine in code-et's [`docs/architecture.md`](https://
 ## Recommended companions
 
 - [`knowledge-work-plugins/engineering`](https://claude.com/product/cowork) — provides `code-review`, `tech-debt`, `testing-strategy`, `system-design` skills. CLAUDE.md (the plugin's, not this one) has the delegation map.
-- `rust-analyzer-lsp` — symbol-level precision for `/code:plan-issue` (used by code-et).
+- `rust-analyzer-lsp` — symbol-level precision for `/code:plan` and `/code:fix` (used by code-et).
+
+## Deploy & upload rule
+
+**Never** deploy or upload {{name}} via raw shell commands. All paths route through:
+
+- `just deploy <env>` → `scripts/deploy.sh` (audit gate → build → migrate → roll out → smoke).
+- `just upload <kind> <env>` → `scripts/upload.sh` (web/desktop/mobile artifacts → CDN/object store).
+
+If you find yourself typing `gcloud run deploy …`, `docker push …`, or `gsutil cp …` directly, stop — add the missing step to the script instead. The discipline keeps deploys deterministic and reviewable.
 
 ## CI gate
 
@@ -46,8 +55,8 @@ A failing CI is the merge blocker. Local feedback: `just audit`.
 
 | Task | Command |
 |---|---|
-| Single bug fix | `/code:go` (scope) → implement → `/commit-push-pr` |
-| Feature (PRD-driven) | `/code:grill` → `/code:prd` → `/code:plan-issue` → `/code:implement` → `/commit-push-pr` |
+| Single bug fix | `/code:fix` (scope) → implement → `/commit-push-pr` |
+| Feature | `/code:plan` (idea → PRD → tasks) → `/code:ship` (parallel + audit) → `/code:review` → `/commit-push-pr` |
 | Add CI to existing repo | `/code:install-ci` |
 
 Each task carries `metadata.layer ∈ {domain, application, infrastructure, interface, chore}` (per-file). Vertical slices may span layers; each *file* belongs to exactly one.
