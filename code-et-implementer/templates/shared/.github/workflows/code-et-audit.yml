@@ -1,0 +1,68 @@
+name: code-et-audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: code_et_audit
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      CARGO_TERM_COLOR: always
+      RUSTFLAGS: -D warnings
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: install cargo-nextest
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+
+      - name: fmt
+        run: cargo fmt --all -- --check
+
+      - name: clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+      - name: layer-deps validator
+        run: bash scripts/layer-deps-validator.sh
+
+      - name: cargo-machete (unused deps)
+        uses: bnjbvr/cargo-machete@main
+
+      - name: cargo-audit (advisories)
+        uses: rustsec/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: cargo-deny (license + bans + sources + advisories)
+        uses: EmbarkStudios/cargo-deny-action@v1
+
+      - name: tests
+        run: cargo nextest run --workspace --all-features
+        env:
+          DATABASE_URL: "sqlite::memory:"

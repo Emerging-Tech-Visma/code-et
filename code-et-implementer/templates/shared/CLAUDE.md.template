@@ -1,0 +1,59 @@
+# {{name}}
+
+Pure-Rust full-stack project bootstrapped with [code-et](https://github.com/Emerging-Tech-Visma/code-et). Architecture: Clean Architecture (4 crates: `domain`, `application`, `infrastructure`, `interface`). Frontend: Dioxus 0.7+ for web/desktop/mobile. Database: {{db}} (`sqlite` for local, switch via `DATABASE_URL=postgres://…` for Cloud SQL).
+
+## Quick start
+
+```bash
+cp .env.example .env          # set DATABASE_URL
+just db:migrate               # apply migrations
+just run:server               # axum + dioxus-fullstack SSR on :3000
+just run:web                  # dioxus-web (WASM) on :8080
+just run:desktop              # dioxus-desktop window
+just test                     # cargo nextest run --workspace
+just audit                    # local mirror of CI audit
+```
+
+## Architecture rules
+
+This project follows the doctrine in code-et's [`docs/architecture.md`](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/architecture.md).
+
+- Imports point inward: `domain` ← `application` ← `infrastructure`/`interface`. The `Cargo.toml` workspace deps enforce this.
+- DTOs cross boundaries; `domain::Entity` and `sqlx::Row` do not.
+- Dioxus components live in `crates/interface/src/components/` and render on web, desktop, and mobile.
+- All SQL goes through `sqlx::query!` (compile-time-checked); raw `sqlx::query` is forbidden in production code.
+- Forward-only migrations under `migrations/`. Each rollback is its own forward migration.
+
+## Recommended companions
+
+- [`knowledge-work-plugins/engineering`](https://claude.com/product/cowork) — provides `code-review`, `tech-debt`, `testing-strategy`, `system-design` skills. CLAUDE.md (the plugin's, not this one) has the delegation map.
+- `rust-analyzer-lsp` — symbol-level precision for `/code:plan-issue` (used by code-et).
+
+## CI gate
+
+`.github/workflows/code-et-audit.yml` runs on every PR + push to main:
+1. `cargo fmt --check`
+2. `cargo clippy --workspace --all-targets --all-features -- -D warnings`
+3. `scripts/layer-deps-validator.sh` (defence-in-depth on the layer rule)
+4. `cargo-machete` (unused deps)
+5. `cargo-audit` (security advisories)
+6. `cargo-deny check` (license + bans)
+7. `cargo nextest run --workspace --all-features`
+
+A failing CI is the merge blocker. Local feedback: `just audit`.
+
+## Code-et workflow
+
+| Task | Command |
+|---|---|
+| Single bug fix | `/code:go` (scope) → implement → `/commit-push-pr` |
+| Feature (PRD-driven) | `/code:grill` → `/code:prd` → `/code:plan-issue` → `/code:implement` → `/commit-push-pr` |
+| Add CI to existing repo | `/code:install-ci` |
+
+Each task carries `metadata.layer ∈ {domain, application, infrastructure, interface, chore}` (per-file). Vertical slices may span layers; each *file* belongs to exactly one.
+
+## See also
+
+- [code-et docs/architecture.md](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/architecture.md)
+- [code-et docs/anti-slop.md](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/anti-slop.md)
+- [code-et docs/testing.md](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/testing.md)

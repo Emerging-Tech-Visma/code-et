@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "3.8.1",
-  "description": "Feature + bug lanes. Grill ideas into PRDs, decompose with LSP, implement with parallel agents.",
+  "version": "3.9.0",
+  "description": "Pure-Rust Clean Architecture workflow. Bootstrap axum+sqlx+dioxus+tokio projects, plan with PRDs, implement with parallel agents, audit on CI.",
   "author": {
     "name": "Kennet Kusk"
   },
@@ -9,7 +9,12 @@
   "keywords": [
     "coding",
     "workflow",
-    "github",
+    "rust",
+    "clean-architecture",
+    "dioxus",
+    "axum",
+    "sqlx",
+    "anti-slop",
     "task-driven",
     "agents",
     "verification",

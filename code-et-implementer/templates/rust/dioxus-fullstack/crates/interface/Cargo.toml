@@ -1,0 +1,32 @@
+[package]
+name = "interface"
+edition.workspace = true
+rust-version.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+domain = { workspace = true }
+application = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+# UI
+dioxus = { workspace = true }
+
+# HTTP (axum) — gated to keep WASM builds light
+axum = { workspace = true, optional = true }
+tower = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+
+[features]
+default = ["server"]
+server = ["dep:axum", "dep:tower", "dep:tower-http", "dep:tokio", "dioxus/fullstack"]
+desktop = ["dioxus/desktop"]
+web = ["dioxus/web"]
+mobile = ["dioxus/mobile"]
