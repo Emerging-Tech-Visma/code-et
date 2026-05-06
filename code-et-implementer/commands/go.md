@@ -97,7 +97,7 @@ Read `FILE-REFERENCE.md` at the project root. This is your map of every app, scr
 
 Read what the user said (their initial message or args). Identify:
 - **Bug class**: visual regression, broken behaviour, API error, data inconsistency, perf issue, etc.
-- **Which app(s)**: CMS, Content Studio, Course Studio, Survey Studio, or Shared
+- **Which app(s)**: pick from the Apps Overview in `FILE-REFERENCE.md` (don't guess from memory)
 - **Which screen/area**: e.g. "home page", "editor", "step modal", "dashboard"
 
 If the request describes a multi-slice feature rather than a single bug, stop and route to `/code:prd` → `/code:plan-issue` → `/code:implement` (see scope guard at top).
@@ -120,8 +120,8 @@ Once you have answers, output a **Task Brief** in this format:
 ```
 ## Task Brief
 
-**Type:** [feature / bug fix / styling / refactor / API change]
-**App:** [CMS / Content Studio / Course Studio / Survey Studio]
+**Type:** [bug fix / styling / refactor / API change]
+**App:** [app name from FILE-REFERENCE.md Apps Overview]
 **Screen:** [specific screen name from FILE-REFERENCE.md]
 **Description:** [1-2 sentence summary of what needs to happen]
 

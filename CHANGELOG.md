@@ -2,6 +2,19 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [3.8.1] - 2026-04-30
+
+### Changed — `/code:go` portability
+
+- **`/code:go` no longer hardcodes Visma-specific app names.** Step 2 ("Which app(s)") and the Step 4 Task Brief template now reference the dynamic `Apps Overview` from `FILE-REFERENCE.md` instead of `CMS / Content Studio / Course Studio / Survey Studio`. The plugin is general-purpose and used across multiple repos; the hardcoded list contradicted Step 0's dynamic-discovery design.
+- **Removed `feature` from the Task Brief Type list.** The scope guard at the top of `/code:go` already routes multi-slice features to `/code:prd → /code:plan-issue → /code:implement`, but the output template still listed `feature` as a valid type, contradicting the guard. Type list is now `[bug fix / styling / refactor / API change]`.
+- **Synced `marketplace.json` version** with `plugin.json` (was stale at 3.7.4).
+
+### Removed — dead documentation
+
+- **Deleted `code-et-implementer/references/go-reference.md`** (and the now-empty `references/` directory). No active command, script, or CLAUDE.md referenced it; its content (workflow position + FILE-REFERENCE lifecycle) is already documented in `code-et-implementer/CLAUDE.md`. Removed the corresponding stale row from the project-root `FILE-REFERENCE.md`.
+- **Deleted `plans/2026-04-20-feature-lane-workflow.md`** and **`plans/2026-04-20-feature-lane-workflow-plan.md`** — completed PRDs from the feature-lane work that shipped in v3.7.0. Not referenced by any active code; the architecture they describe is now the implementation, documented in `code-et-implementer/CLAUDE.md`. Git history retains the originals.
+
 ## [3.8.0] - 2026-04-30
 
 ### Removed — low-value / high-token hooks
