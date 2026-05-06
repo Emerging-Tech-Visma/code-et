@@ -8,9 +8,10 @@ license.workspace = true
 [dependencies]
 domain = { workspace = true }
 async-trait = { workspace = true }
-anyhow = { workspace = true }
 thiserror = { workspace = true }
 serde = { workspace = true }
+# Add `anyhow = { workspace = true }` if you need glue-error wrapping in a
+# use case (rare — application errors should be `thiserror`-derived).
 
 [dev-dependencies]
 mockall = { workspace = true }
