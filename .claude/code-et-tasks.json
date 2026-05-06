@@ -1,0 +1,171 @@
+{
+  "task_list_id": "code-et-tasks",
+  "prd": "plans/2026-05-06-v3.10-audit-command.md",
+  "branch": "feature/v3.10-audit-command",
+  "created": "2026-05-06",
+  "tasks": [
+    {
+      "id": "1",
+      "title": "Correct PRD stage list to match shipped CI yaml",
+      "status": "pending",
+      "blocked_by": [],
+      "metadata": {
+        "verification": "grep -E 'udeps|clippy.toml thresholds|clippy -W dead_code' plans/2026-05-06-v3.10-audit-command.md && exit 1 || exit 0",
+        "files": [
+          "plans/2026-05-06-v3.10-audit-command.md:1",
+          "code-et-implementer/templates/shared/.github/workflows/code-et-audit.yml:45"
+        ],
+        "expected_outcome": "PRD's stage references describe the actual yaml stages (fmt, clippy -D warnings, layer-deps, machete, audit, deny, nextest). US-9 (nightly udeps fallback) reframed as a generic missing-tool fallback for cargo-machete/audit/deny. The grep above returns no hits.",
+        "rationale": "PRD was drafted from CHANGELOG preview prose, not from the merged yaml. The yaml has no udeps, no standalone clippy.toml threshold step, and no clippy -W dead_code — but does have fmt and nextest tests. Every downstream task anchors to this stage list, so the spec must match reality before T2 builds the parser. Replaces the 4-stage prose in the PRD's Solution paragraph and US-9's nightly-udeps wording.",
+        "user_story": "chore:spec drift between PRD and shipped v3.9.0 yaml must be fixed before implementation",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "2",
+      "title": "Audit foundation: command, yaml-parsed runner, report writer, Cargo.toml guard, portability",
+      "status": "pending",
+      "blocked_by": ["1"],
+      "metadata": {
+        "verification": "bash code-et-implementer/scripts/audit.sh code-et-implementer/templates/rust/dioxus-fullstack && test -f code-et-implementer/templates/rust/dioxus-fullstack/.claude/audit-*.md && bash code-et-implementer/tests/audit-skips-non-rust.sh && bash code-et-implementer/tests/audit-stage-list-matches-yaml.sh && ! grep -riE '(visma|emerging-tech)' code-et-implementer/scripts/audit*.sh code-et-implementer/commands/audit.md",
+        "files": [
+          "code-et-implementer/commands/audit.md:1",
+          "code-et-implementer/scripts/audit.sh:1",
+          "code-et-implementer/scripts/audit-stages.sh:1",
+          "code-et-implementer/scripts/audit-report.sh:1",
+          "code-et-implementer/templates/shared/.github/workflows/code-et-audit.yml:30",
+          "code-et-implementer/templates/rust/dioxus-fullstack/Cargo.toml:1",
+          "code-et-implementer/tests/audit-skips-non-rust.sh:1",
+          "code-et-implementer/tests/audit-stage-list-matches-yaml.sh:1"
+        ],
+        "expected_outcome": "/code:audit command exists. Running it in a Rust workspace executes every step from code-et-audit.yml in declared order, exits non-zero on any stage failure, writes .claude/audit-<UTC>.md with severity-grouped findings and path:line citations, and exits 0 with a 'not a Rust workspace' message when no Cargo.toml is found at any depth. No org-specific tokens (visma|emerging-tech) anywhere in the new code. This task ships ONE bundled slice that satisfies five PRD stories: US-1 (full pipeline), US-6 (Cargo.toml guard), US-7 (report format), US-8 (yaml as source of truth), US-11 (portability). On completion, flip ALL five boxes: `- [ ] US-1`, `- [ ] US-6`, `- [ ] US-7`, `- [ ] US-8`, `- [ ] US-11` to ticked in the PRD — the metadata.user_story field carries only US-1 because the schema is single-valued, but the slice covers all five. Stage all five edits in the same commit as the code.",
+        "rationale": "The yaml is the single source of truth (PRD design choice). Parsing it at runtime — instead of hardcoding the stage list — is what makes local and CI un-driftable. This task ships the minimum viable slice: command definition + parser + runner + report writer + workspace guard + portability discipline, end-to-end testable against the bundled v3.9.0 fixture. Splitting these five concerns into separate tasks would create artificial seams (a parser with no runner, a runner with no report) — they only make sense shipped together. Everything else (--fast, --stage, --review, hooks) is a flag or wiring on top of this foundation. Code-et itself is not Rust — `layer: chore` since the audit lives in plugin tooling, not a Rust workspace.",
+        "user_story": "US-1",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "3",
+      "title": "Add --fast and --stage <n> flags to audit runner",
+      "status": "pending",
+      "blocked_by": ["2"],
+      "metadata": {
+        "verification": "bash code-et-implementer/scripts/audit.sh --fast code-et-implementer/templates/rust/dioxus-fullstack && bash code-et-implementer/scripts/audit.sh --stage 3 code-et-implementer/templates/rust/dioxus-fullstack && bash code-et-implementer/scripts/audit.sh --stage 99 code-et-implementer/templates/rust/dioxus-fullstack; test $? -ne 0",
+        "files": [
+          "code-et-implementer/scripts/audit.sh:1",
+          "code-et-implementer/commands/audit.md:1"
+        ],
+        "expected_outcome": "--fast runs only stages 1-2 from the parsed yaml (fmt + clippy). --stage <n> for valid n runs only that stage. Invalid n exits non-zero with a usage message listing valid stage numbers and names.",
+        "rationale": "These flags are the contract that lets verify-gate (T5) and implement.md (T4) call the audit cheaply on the hot path without running deny/audit/machete every time. Splitting them out from T2 keeps T2's slice focused on 'does the full pipeline work end-to-end'; this task's slice is 'does the runner respect mode flags'. Both flags share the same flag-parsing block in audit.sh, so they belong in one task.",
+        "user_story": "US-4",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "4",
+      "title": "Wire audit --fast into implement.md skill chain after simplify",
+      "status": "pending",
+      "blocked_by": ["3"],
+      "metadata": {
+        "verification": "grep -A1 'Skill(\"simplify\")' code-et-implementer/commands/implement.md | grep -q 'audit.*--fast' && bash code-et-implementer/tests/implement-chain-halts-on-audit-failure.sh",
+        "files": [
+          "code-et-implementer/commands/implement.md:83",
+          "code-et-implementer/tests/implement-chain-halts-on-audit-failure.sh:1"
+        ],
+        "expected_outcome": "After the orchestrator's Skill(\"simplify\") call on implement.md:83, a Skill(\"audit\", \"--fast\") call runs. A test fixture with a known clippy regression triggers a halt of the implement chain with the audit report path surfaced in the output.",
+        "rationale": "Implement.md's current chain ends at simplify with no static-analysis pass. Inserting --fast audit (stages 1-2 only) keeps the implement loop fast while catching style and lint regressions before merge. The end-to-end test exercises the full chain against a regression fixture, which is what makes this a vertical slice rather than a one-line edit.",
+        "user_story": "US-2",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "5",
+      "title": "Wire audit --fast into verify-gate.sh, guarded by Cargo.toml presence",
+      "status": "pending",
+      "blocked_by": ["3"],
+      "metadata": {
+        "verification": "bash code-et-implementer/tests/verify-gate-runs-audit-on-rust.sh && bash code-et-implementer/tests/verify-gate-skips-audit-on-non-rust.sh",
+        "files": [
+          "code-et-implementer/scripts/verify-gate.sh:1",
+          "code-et-implementer/tests/verify-gate-runs-audit-on-rust.sh:1",
+          "code-et-implementer/tests/verify-gate-skips-audit-on-non-rust.sh:1"
+        ],
+        "expected_outcome": "verify-gate.sh invokes audit --fast when Cargo.toml exists at repo root and skips silently when it doesn't. Both branches covered by integration tests.",
+        "rationale": "verify-gate.sh is currently 5 lines: detect tests, run them. Adding the audit hook at the SubagentStop boundary catches regressions one step earlier than the implement-chain hook (T4) and is cheap (--fast = 2 stages). Cargo.toml guard makes the hook safe on non-Rust repos — code-et is general-purpose (used across Kennet's repos, not Visma-only) so the hook must no-op cleanly on TS/Python projects.",
+        "user_story": "US-3",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "6",
+      "title": "Add --review flag chaining engineering plugin's code-review skill",
+      "status": "pending",
+      "blocked_by": ["2"],
+      "metadata": {
+        "verification": "bash code-et-implementer/tests/audit-review-with-plugin.sh && bash code-et-implementer/tests/audit-review-without-plugin.sh",
+        "files": [
+          "code-et-implementer/scripts/audit.sh:1",
+          "code-et-implementer/scripts/audit-report.sh:1",
+          "code-et-implementer/tests/audit-review-with-plugin.sh:1",
+          "code-et-implementer/tests/audit-review-without-plugin.sh:1"
+        ],
+        "expected_outcome": "/code:audit --review runs the static stages, then invokes engineering plugin's code-review skill against `git diff <merge-base>..HEAD`. Combined output written to the audit report under a 'Review' section. Without the engineering plugin installed, exits non-zero with a hint to install it.",
+        "rationale": "Static analysis catches mechanical issues; code-review prose catches design issues. Chaining the two through one command means the developer runs `/code:audit --review` once before pushing instead of switching skills. This is also code-et's first cross-plugin dependency — the absence-detection branch is what makes the dependency soft.",
+        "user_story": "US-5",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "7",
+      "title": "Tool-presence guards: WARN-and-skip when machete/audit/deny missing",
+      "status": "pending",
+      "blocked_by": ["2"],
+      "metadata": {
+        "verification": "bash code-et-implementer/tests/audit-skips-missing-tools.sh",
+        "files": [
+          "code-et-implementer/scripts/audit.sh:1",
+          "code-et-implementer/tests/audit-skips-missing-tools.sh:1"
+        ],
+        "expected_outcome": "If cargo-machete, cargo-audit, or cargo-deny is not on PATH, the audit emits a WARNING for the missing stage, skips it, and continues with the remaining stages. The WARNING is recorded in the report's findings list at LOW severity. Exit code is 0 if no other stage fails.",
+        "rationale": "PRD's US-9 was written assuming `cargo +nightly udeps` was a stage; the actual yaml uses machete/audit/deny instead. T1 corrects the PRD; this task implements the spirit of US-9 — graceful degradation when local tooling diverges from CI's fully-provisioned environment — against the real toolset. Without this, a fresh dev machine gets non-zero exit for missing tools that CI installs automatically, which makes the local audit useless on day one.",
+        "user_story": "US-9",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "8",
+      "title": "CRITICAL-first summary line in report and terminal",
+      "status": "pending",
+      "blocked_by": ["2"],
+      "metadata": {
+        "verification": "bash code-et-implementer/tests/audit-summary-line-on-failure.sh",
+        "files": [
+          "code-et-implementer/scripts/audit-report.sh:1",
+          "code-et-implementer/scripts/audit.sh:1",
+          "code-et-implementer/tests/audit-summary-line-on-failure.sh:1"
+        ],
+        "expected_outcome": "When the audit reports any non-LOW finding, the first line of .claude/audit-<UTC>.md is a one-sentence summary of the highest-severity finding plus a remediation hint, and the same line is echoed to stderr.",
+        "rationale": "Report files can be long. The 'first thing the user reads' must be 'what's the worst thing and how do I fix it'. This is a UX primitive that pays off every failed run. Splits cleanly from T2 because T2 ships the report writer's structure; this task adds the summary-line layer on top.",
+        "user_story": "US-12",
+        "layer": "chore"
+      }
+    },
+    {
+      "id": "9",
+      "title": "code-et CI smoke job: run audit against bundled fixture",
+      "status": "pending",
+      "blocked_by": ["2", "3"],
+      "metadata": {
+        "verification": "test -f .github/workflows/audit-smoke.yml && grep -q 'templates/rust/dioxus-fullstack' .github/workflows/audit-smoke.yml",
+        "files": [
+          ".github/workflows/audit-smoke.yml:1",
+          "code-et-implementer/templates/rust/dioxus-fullstack/Cargo.toml:1"
+        ],
+        "expected_outcome": "Every PR to code-et runs /code:audit against templates/rust/dioxus-fullstack/. Job exits 0 on a clean fixture. The fixture doubles as the audit's regression suite.",
+        "rationale": "The bundled fixture is already the v3.9.0 gate's smoke target — making it the audit's smoke target too means one fixture, one set of expectations, no drift between the templated CI gate and the local command that mirrors it. Adds the first .github/workflows/ entry to code-et root (currently empty), so this is also where future plugin-level CI lands.",
+        "user_story": "US-10",
+        "layer": "chore"
+      }
+    }
+  ]
+}
