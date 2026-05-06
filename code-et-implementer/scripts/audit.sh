@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # audit.sh — local mirror of the v3.9.0 CI audit gate.
 #
-# Usage: audit.sh [target-dir]
+# Usage: audit.sh [--fast | --stage <n>] [target-dir]
 #   target-dir defaults to the current working directory.
+#   --fast      runs only stages 1-2 (fmt + clippy) — fast subset for
+#               verify-gate and the implement skill chain.
+#   --stage <n> runs only the n-th stage (1-indexed) from the parsed yaml.
+#   --fast and --stage are mutually exclusive.
 #
 # Behaviour:
 #   - If no Cargo.toml is found at the target dir or its git root, exits 0
@@ -30,11 +34,87 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 STAGES_SCRIPT="$SCRIPT_DIR/audit-stages.sh"
 REPORT_SCRIPT="$SCRIPT_DIR/audit-report.sh"
 
-TARGET_RAW="${1:-$PWD}"
+# Flag parsing — the only place stage selection happens. The rest of the
+# runner stays oblivious. MODE is one of: all | fast | stage. STAGE_NUM is
+# only meaningful when MODE=stage.
+MODE="all"
+STAGE_NUM=""
+POSITIONAL=()
+
+print_usage() {
+  local stages
+  stages="$(bash "$STAGES_SCRIPT")" || return 1
+  echo "Usage: audit.sh [--fast | --stage <n>] [target-dir]" >&2
+  echo "" >&2
+  echo "Valid stages:" >&2
+  local i=0
+  while IFS='|' read -r name _cmd; do
+    [ -z "$name" ] && continue
+    i=$((i + 1))
+    echo "  $i) $name" >&2
+  done <<< "$stages"
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --fast)
+      if [ "$MODE" = "stage" ]; then
+        echo "audit.sh: --fast and --stage are mutually exclusive" >&2
+        print_usage
+        exit 2
+      fi
+      MODE="fast"
+      shift
+      ;;
+    --stage)
+      if [ "$MODE" = "fast" ]; then
+        echo "audit.sh: --fast and --stage are mutually exclusive" >&2
+        print_usage
+        exit 2
+      fi
+      if [ $# -lt 2 ] || [ -z "${2:-}" ]; then
+        echo "audit.sh: --stage requires a numeric argument" >&2
+        print_usage
+        exit 2
+      fi
+      MODE="stage"
+      STAGE_NUM="$2"
+      shift 2
+      ;;
+    --)
+      shift
+      while [ $# -gt 0 ]; do POSITIONAL+=("$1"); shift; done
+      ;;
+    -*)
+      echo "audit.sh: unknown flag: $1" >&2
+      print_usage
+      exit 2
+      ;;
+    *)
+      POSITIONAL+=("$1")
+      shift
+      ;;
+  esac
+done
+
+TARGET_RAW="${POSITIONAL[0]:-$PWD}"
 TARGET="$(cd "$TARGET_RAW" 2>/dev/null && pwd)" || {
   echo "audit.sh: target dir not found: $TARGET_RAW" >&2
   exit 2
 }
+
+# Validate --stage <n> against the parsed yaml *before* the workspace guard so
+# bad input always exits non-zero, regardless of whether the target is a Rust
+# workspace.
+if [ "$MODE" = "stage" ]; then
+  STAGE_LIST_FOR_VALIDATE="$(bash "$STAGES_SCRIPT")"
+  STAGE_COUNT_VALIDATE="$(printf '%s\n' "$STAGE_LIST_FOR_VALIDATE" | grep -c '|' || true)"
+  if ! [[ "$STAGE_NUM" =~ ^[1-9][0-9]*$ ]] || [ "$STAGE_NUM" -gt "$STAGE_COUNT_VALIDATE" ]; then
+    echo "audit.sh: invalid stage '$STAGE_NUM' (valid: 1..$STAGE_COUNT_VALIDATE)" >&2
+    print_usage
+    exit 2
+  fi
+fi
 
 # Workspace guard. Check the target dir first (the fixture is a Rust workspace
 # nested inside a non-Rust outer repo); fall back to the git root if any.
@@ -136,6 +216,18 @@ OVERALL_FAIL=0
 
 # Read the stage list once. Each line is `name|command`.
 STAGES="$(bash "$STAGES_SCRIPT")"
+
+# Apply MODE filter. STAGE_NUM was validated above against the parsed yaml.
+case "$MODE" in
+  fast)
+    # Stages 1-2 (fmt + clippy).
+    STAGES="$(printf '%s\n' "$STAGES" | sed -n '1,2p')"
+    ;;
+  stage)
+    STAGES="$(printf '%s\n' "$STAGES" | sed -n "${STAGE_NUM}p")"
+    ;;
+  all) ;;
+esac
 
 while IFS='|' read -r name cmd; do
   [ -z "$name" ] && continue
