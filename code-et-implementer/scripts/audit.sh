@@ -169,4 +169,14 @@ done <<< "$STAGES"
 bash "$REPORT_SCRIPT" "$REPORT_PATH" < "$FINDINGS_TMP"
 echo "audit: report written to $REPORT_PATH" >&2
 
+# AC-12.2: on failure, surface the report's summary line on stderr so the user
+# sees the highest-severity finding without opening the file. The writer owns
+# the ranking; we just re-echo its first line if it looks like a summary.
+if [ "$OVERALL_FAIL" -ne 0 ]; then
+  first_line="$(head -n 1 "$REPORT_PATH" 2>/dev/null || true)"
+  if [[ "$first_line" =~ ^\[(CRITICAL|HIGH|MEDIUM)\]\ .*\ —\ fix: ]]; then
+    echo "$first_line" >&2
+  fi
+fi
+
 exit "$OVERALL_FAIL"
