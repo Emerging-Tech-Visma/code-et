@@ -6,12 +6,26 @@ all-features = true
 [advisories]
 version = 2
 yanked = "deny"
-# Each ignore needs a one-line rationale. See audit.toml for the long-form.
+# `unmaintained` defaults to "all" (error on any unmaintained crate) in
+# cargo-deny v2. The dioxus-desktop stack drags in 10+ unmaintained
+# gtk-rs 0.18 / fxhash crates that we cannot fix without dioxus migrating
+# upstream. Set to "workspace" — only error if one of OUR workspace crates
+# becomes unmaintained. cargo-audit (stage 5) still surfaces every transitive
+# advisory in its report and CI logs.
+unmaintained = "workspace"
+# `unsound` — keep as error; if a real unsoundness lands, we want to fail.
+# Each ignore below needs a one-line rationale. See audit.toml for long-form.
 # Re-evaluate every time deps bump.
 ignore = [
     # rsa Marvin Attack — transitive via sqlx-macros (compile-time only),
     # no mysql at runtime. Remove once sqlx-macros decouples mysql.
     "RUSTSEC-2023-0071",
+    # glib 0.18 unsound — transitive via dioxus-desktop's gtk-rs 0.18 chain.
+    # Removed once dioxus-desktop migrates off the unmaintained stack.
+    "RUSTSEC-2024-0429",
+    # rand 0.7 unsound (custom logger) — transitive via dioxus-desktop's
+    # kuchikiki/selectors. Removed once dioxus-desktop deps modernise.
+    "RUSTSEC-2026-0097",
 ]
 
 [licenses]
