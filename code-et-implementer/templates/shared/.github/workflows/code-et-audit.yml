@@ -30,15 +30,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: install GTK + WebKit system libs (dioxus-desktop)
-        # dioxus-desktop on Linux uses wry → webkit2gtk → glib/gtk. Without
-        # these, `cargo build` fails on apps/desktop. Skip by editing this
-        # step out if your project's `--targets` excludes desktop.
+      - name: install GTK + WebKit + xdo system libs (dioxus-desktop)
+        # dioxus-desktop on Linux uses wry → webkit2gtk → glib/gtk + xdo for
+        # tray-icon. Without these, `cargo build` fails on apps/desktop. Skip
+        # this step (and remove libxdo-dev) if your project's `--targets`
+        # excludes desktop.
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgtk-3-dev libglib2.0-dev libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev
+            libjavascriptcoregtk-4.1-dev libwebkit2gtk-4.1-dev \
+            libxdo-dev
 
       - name: install rust toolchain
         uses: dtolnay/rust-toolchain@stable

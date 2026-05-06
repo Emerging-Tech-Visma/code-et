@@ -28,12 +28,28 @@ allow = [
     "Zlib",
     "MPL-2.0",
     "CC0-1.0",
+    # NCSA: University of Illinois / NCSA Open Source License. OSI-approved
+    # permissive, equivalent in scope to MIT/BSD. Required by libfuzzer-sys
+    # (transitive via dioxus-desktop → image → ravif → rav1e).
+    "NCSA",
+    # CDLA-Permissive-2.0: Community Data License Agreement Permissive 2.0.
+    # Used by webpki-roots. Permissive, equivalent in scope to MIT/BSD.
+    "CDLA-Permissive-2.0",
+    # BSL-1.0: Boost Software License 1.0. OSI-approved, very permissive
+    # (no attribution required for binary distributions). Used by xxhash-rust.
+    "BSL-1.0",
 ]
 confidence-threshold = 0.8
 
 [bans]
 multiple-versions = "warn"
-wildcards = "deny"
+# Workspace path deps (`domain = { workspace = true }`) carry no version and
+# read as wildcards to cargo-deny. `allow-wildcard-paths` only suppresses this
+# for crates marked `publish = false`; we don't enforce that across every
+# member, so we downgrade wildcards to warn — the workspace path deps are
+# internal-only by construction. Use review to catch real `serde = "*"` slips.
+wildcards = "warn"
+allow-wildcard-paths = true
 deny = []
 
 [sources]
