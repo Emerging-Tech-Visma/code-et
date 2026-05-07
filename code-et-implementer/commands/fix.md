@@ -107,6 +107,8 @@ Skip whatever the user already answered.
 **App:** [app name from Apps Overview]
 **Area:** [crate or module]
 **Description:** [1-2 sentence summary]
+**Goal:** [observable success criterion — what's true after the fix that wasn't before]
+**Verification:** `<cmd>` — [expected outcome on green; for visual fixes: manual repro steps]
 
 ### Files to touch
 | File | Layer | Why |
@@ -129,4 +131,5 @@ The `Layer` column is mandatory. Use file paths discovered via `Glob`/`Grep`. Re
 - If the user already gave enough context, skip straight to the Task Brief.
 - Reference concrete paths (from Glob) so the user can point and say "that one".
 - Description ≤2 sentences using fragments. File "Why" column ≤6 words. No hedging or filler.
+- **Goal + Verification are mandatory.** Goal is the testable outcome (one sentence, observable). Verification is the cmd that proves it (`cargo nextest run -p <crate>` for unit, `cargo clippy --all-targets -- -D warnings` for lint regressions, manual repro steps for visual/UI). If you can't state Verification, the bug isn't scoped tightly enough — ask another clarifying question.
 - **Context budget**: FILE-REFERENCE = constraints + orientation. Glob/Grep = file discovery. LSP = scalpel for named symbols. Never read whole files in `/code:fix` — that's `/code:plan`'s job.

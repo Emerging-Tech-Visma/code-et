@@ -47,6 +47,21 @@ metadata: {
 
 `layer` is mandatory. Each *file* declares its layer; vertical slices may span layers.
 
+## Model Assignments
+
+Different roles in the workflow run on different models. The `Agent` tool's `model` param accepts `opus` | `sonnet` | `haiku` — each resolves to the latest of that family.
+
+| Role | Model | Where |
+|---|---|---|
+| Orchestrator (`/code:plan`, `/code:ship`) | `opus` (4.7) | Inherited; multi-step coordination + judgment. |
+| Per-task implementer | `sonnet` (4.6) | `/code:ship` — routine vertical-slice coding. |
+| Per-task reviewer | `sonnet` (4.6) | `/code:ship` — diff review via engineering plugin's `code-review` skill (falls back to inline 5-area checklist if the plugin isn't installed). |
+| Per-task review fix-pass | `sonnet` (4.6) | `/code:ship` — apply review findings, no scope expansion. |
+| Post-merge audit fix-pass | `opus` (4.7) | `/code:ship` — judgment on layer slips, dep advisories, test failures. |
+| Explore (breadth searches) | `haiku` (4.5) | `/code:plan`, `/code:fix` — cheap parallel discovery. |
+
+The principle: heavy lifting (planning, judgment) on Opus; routine coding + diff review on Sonnet; breadth gathering on Haiku.
+
 ## Code Standards
 
 - Rust 2024 edition; `cargo clippy --all-targets -- -D warnings`; `cargo fmt --check`.

@@ -14,7 +14,18 @@ If the current branch is `main` or `master`, create `feature/<slug-from-prd-or-t
 
 ## Dispatch
 
-Every task runs as a forked subagent in its own worktree. Use `Agent` with `isolation: "worktree"` and `subagent_type: "general-purpose"`. **Do not** shell out to `git worktree add` — `isolation: "worktree"` handles it (requires `CLAUDE_CODE_FORK_SUBAGENT=1` on external builds; default-on inside this harness).
+Every task runs as a forked subagent in its own worktree. Use `Agent` with `isolation: "worktree"`, `subagent_type: "general-purpose"`, and `model: "sonnet"` (Sonnet 4.6 — routine coding tier). **Do not** shell out to `git worktree add` — `isolation: "worktree"` handles it (requires `CLAUDE_CODE_FORK_SUBAGENT=1` on external builds; default-on inside this harness).
+
+**Model assignments across the swarm:**
+
+| Role | Model | Why |
+|---|---|---|
+| Orchestrator (this skill) | inherits (Opus 4.7) | Multi-step coordination + decisions on partial failures. |
+| Per-task implementer | `sonnet` (4.6) | Routine vertical-slice coding from a complete brief. |
+| Per-task reviewer fork | `sonnet` (4.6) | Diff review via engineering plugin's `code-review` skill (falls back to inline 5-area checklist). |
+| Per-task review fix-pass | `sonnet` (4.6) | Apply review findings; no scope expansion. |
+| Post-merge audit fix-pass | `opus` (4.7) | Judgment call on the audit gate — layer slips, dependency advisories. |
+| Explore (when delegated for breadth) | `haiku` (4.5) | Cheap breadth searches for cold areas. Implementer/reviewer prompt may request this. |
 
 Dependency graph drives order. Independent tasks **must** dispatch in a single message with multiple `Agent` calls so they run concurrently — never serialize what could fan out.
 
@@ -80,15 +91,94 @@ Do not merge back to the parent feature branch — the orchestrator handles that
 
 The subagent stops after step 4 and returns. It must **not** merge or remove its own worktree — it has no view of the parent feature branch.
 
+## Per-task review (before merge)
+
+Code review happens twice in v4.1+: once per task before merge (this section, shift-left), and once across the full feature branch at `/code:review` (pre-PR gate). Per-task review catches logic bugs at the smallest possible diff — task 1's bug never gets to pollute task 2's foundation.
+
+### Step 1 — Capture the diff
+
+After the implementer subagent returns successfully:
+
+```
+diff="$(git -C <worktree_path> diff $(git merge-base HEAD <subagent_branch>)..<subagent_branch>)"
+```
+
+Empty diff = implementer didn't write code. Halt that task and surface to the user; do not dispatch a reviewer.
+
+### Step 2 — Dispatch the reviewer (Sonnet 4.6)
+
+Reviewer is a fork — `Agent(model: "sonnet")` with no `subagent_type` and no `isolation`. It works against the diff payload, not the worktree.
+
+If the diff exceeds **1500 lines**, halt this task and surface a "task too large — split or escalate to `/code:review` only" warning instead of dispatching. A vertical slice that big is almost always two slices in disguise.
+
+Reviewer prompt:
+
+```
+# Per-task review for <task-id>: <title>
+
+## Diff (against parent feature branch)
+<diff content — full payload, ≤1500 lines>
+
+## Rationale (why this task exists)
+<metadata.rationale>
+
+## Expected outcome
+<metadata.expected_outcome>
+
+## Layer
+<metadata.layer>
+
+Review the diff against the rationale + expected outcome.
+
+**Step A — Try the engineering plugin's code-review skill:**
+```
+Skill("code-review")
+```
+If it returns findings, use them. If the skill is not installed (the call errors with "skill not found"), fall back to Step B.
+
+**Step B — Inline 5-area review** (mirror of `/code:review` Step 2):
+1. **Layer compliance** — does any new file violate the inward dependency rule? (`code-et-implementer/docs/architecture.md` §"The Dependency Rule")
+2. **Anti-slop** — Rule of Three duplicates, mirror tests, defensive validation, dead re-exports. (`code-et-implementer/docs/anti-slop.md` §"Hard rules")
+3. **Test coverage** — every acceptance criterion has a corresponding test. (`code-et-implementer/docs/testing.md` §"Per-layer test matrix")
+4. **Security** — secrets in `secrecy::Secret<T>`; auth at every interface entry point. (`code-et-implementer/docs/architecture.md` §"Rust security checklist")
+5. **Slice integrity** — coherent vertical slice; superseded code deleted in same commit; no `// TODO: remove old X`.
+
+**Output format — strict.** Output ONLY the JSON array as your final message. No preamble, no code fences, no explanation. If no CRITICAL or HIGH findings, output exactly: `[]`
+
+Schema:
+[{"severity": "CRITICAL|HIGH", "file": "path:line", "issue": "<one sentence>"}]
+
+Drop MEDIUM and LOW findings — those are for `/code:review` to catch later. Do not modify code. You are a reviewer, not a fixer.
+```
+
+### Step 3 — On CRITICAL/HIGH findings, dispatch ONE review fix-pass
+
+Spawn `Agent(subagent_type: "general-purpose", model: "sonnet")` with no isolation. Prompt directs it to operate via `git -C <worktree_path>` and explicit file paths inside `<worktree_path>`:
+
+```
+# Review fix-pass for <task-id>
+
+The per-task reviewer flagged the following CRITICAL/HIGH findings on the diff in worktree <worktree_path>:
+
+<findings JSON>
+
+Fix each finding. Use absolute paths or `git -C <worktree_path>` for git operations. After fixing, re-run `<metadata.verification>` from inside `<worktree_path>` (must exit 0). Commit the fix-up with subject "fix-up: <task tag>". Return the new HEAD SHA.
+
+Constraints: same as the implementer (Brevity, Context Hygiene, Clean Architecture rules). No scope expansion — fix the findings only.
+```
+
+After the review fix-pass returns, **do not re-review**. One cycle max — same retry budget as the post-merge audit. If the fix-pass returns without a new commit or `verification` fails, halt that task and surface findings to the user (leave the worktree in place for inspection).
+
 ## Orchestrator (this skill)
 
 After each `Agent` call returns:
 1. Read the returned worktree path and branch from the tool result.
-2. From the parent feature branch: `git merge --no-ff <subagent-branch>`.
-3. `git worktree remove <path>` (the harness auto-cleans empty worktrees, but populated ones need explicit removal).
-4. Mark the task completed via `TaskUpdate` only after the merge lands.
+2. Run **Per-task review** (above). On CRITICAL/HIGH, dispatch one review fix-pass and continue.
+3. From the parent feature branch: `git merge --no-ff <subagent-branch>`.
+4. `git worktree remove <path>` (the harness auto-cleans empty worktrees, but populated ones need explicit removal).
+5. Mark the task completed via `TaskUpdate` only after the merge lands.
 
-If a subagent reports failure, leave the worktree in place for inspection — do not auto-discard.
+If a subagent reports failure, or the review fix-pass cannot resolve findings, leave the worktree in place for inspection — do not auto-discard.
 
 ## After all tasks land — audit
 
@@ -105,7 +195,7 @@ The audit mirrors the v4.0 CI gate: `cargo fmt --check`, `cargo clippy -D warnin
 If audit exits non-zero with CRITICAL or HIGH findings (the typical: layer violation, dependency advisory, clippy lint, test failure):
 
 1. Read `.claude/audit-<UTC>.md` — extract the highest-severity finding's `path:line` + message.
-2. Dispatch **one** fix-pass subagent via `Agent` (no worktree isolation — work directly on the feature branch since the task swarm already merged):
+2. Dispatch **one** fix-pass subagent via `Agent(subagent_type: "general-purpose", model: "opus")` (no worktree isolation — work directly on the feature branch since the task swarm already merged; Opus 4.7 here because audit-gate findings often require judgment — layer slips, dependency advisories, real test failures vs flakes):
    ```
    # Audit fix-pass
    The post-implement audit returned <severity> at <path:line>: <message>.

@@ -2,6 +2,49 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.1.0] - 2026-05-07
+
+### Added — per-task review subagent in `/code:ship`
+
+Code review now happens twice in the feature lane: once per task before merge (new), and once across the full feature branch at `/code:review` (pre-PR gate). Per-task review catches logic bugs at the smallest possible diff so task 1's bug never pollutes task 2's foundation.
+
+After each implementer subagent commits in its worktree, the orchestrator:
+
+1. Captures the diff against the parent feature branch.
+2. Dispatches a reviewer **fork** (`Agent(model: "sonnet")`, no `subagent_type`, no isolation) with the diff payload + rationale + expected_outcome + layer. The reviewer calls `Skill("code-review")` (engineering plugin) and falls back to the same 5-area inline checklist `/code:review` uses when the plugin isn't installed. Returns CRITICAL/HIGH findings as strict JSON.
+3. On findings, dispatches **one** review fix-pass (`Agent(subagent_type: "general-purpose", model: "sonnet")`, no isolation, operating via `git -C <worktree>` and explicit paths inside the worktree). Same retry budget as the post-merge audit — one cycle max.
+4. Merges into the parent feature branch only after the review (and any fix-pass) passes.
+
+If the fix-pass cannot resolve findings, the orchestrator halts that task and surfaces — leaves the worktree in place for inspection.
+
+### Added — explicit model assignments per role
+
+`Agent` calls in `/code:plan` and `/code:ship` now specify the `model` parameter (one of `opus` | `sonnet` | `haiku`) instead of inheriting the orchestrator's model. The split:
+
+| Role | Model | Why |
+|---|---|---|
+| Orchestrator (`/code:plan`, `/code:ship`) | inherits (Opus 4.7) | Multi-step coordination + judgment. |
+| Per-task implementer | `sonnet` (4.6) | Routine vertical-slice coding from a complete brief. |
+| Per-task reviewer | `sonnet` (4.6) | Mechanical diff review with `engineering:code-review` skill. |
+| Per-task review fix-pass | `sonnet` (4.6) | Apply review findings; no scope expansion. |
+| Post-merge audit fix-pass | `opus` (4.7) | Audit-gate findings often require judgment — layer slips, dep advisories, real test failures vs flakes. |
+| Explore (breadth searches in `/code:plan`) | `haiku` (4.5) | Cheap parallel discovery. |
+
+`code-et-implementer/CLAUDE.md` documents the convention so it's discoverable in any project that installs the plugin.
+
+### Changed — `/code:fix` Task Brief now states Goal + Verification
+
+The `/code:fix` Task Brief template (`code-et-implementer/commands/fix.md`) gains two mandatory lines after `Description`:
+
+- **Goal** — observable success criterion ("what's true after the fix that wasn't before").
+- **Verification** — runnable cmd + expected outcome (or manual repro steps for visual fixes).
+
+`/code:plan` already encoded this through `metadata.expected_outcome` + `metadata.verification`, which `/code:ship` injects into every dispatched subagent and enforces in the per-subagent contract. `/code:fix` hands the Brief straight to a human implementer — no orchestrator, no `SubagentStop` hook — so the goal-and-test pair belongs in the Brief itself. With the addition both lanes (bug + feature) close the "did we achieve it" loop symmetrically.
+
+The Rules section also gains: "If you can't state Verification, the bug isn't scoped tightly enough — ask another clarifying question."
+
+No changes to the Clean Architecture rules — fix.md already references `code-et-implementer/docs/architecture.md` and the Layer column in the Files-to-touch table already enforces the Dependency Rule by inspection.
+
 ## [4.0.0] - 2026-05-06
 
 **Breaking restructure** — the plugin is now pure-Rust only and condenses to six commands. Existing PRDs and tasks under `plans/` and `.claude/<id>.json` continue to work, but the entry-point command names have changed. See the migration table below.
