@@ -130,7 +130,7 @@ Read the PRD (it is the authoritative spec).
 
 **Replace, don't accumulate.** When a slice supersedes existing logic, the task scope **includes deletion of the superseded code**. State the `path:line` being replaced in `metadata.rationale`. No parallel utilities, no `// TODO: remove old X`.
 
-**LSP for symbols.** Use `documentSymbol` / `findReferences` / `definition` to anchor each US/AC to `file:line`. Grep/Glob for discovery; LSP for precision. Never use LSP to enumerate the project. For 3+ independent areas, spawn parallel `Agent(subagent_type: "Explore")` queries in a single message.
+**LSP for symbols.** Use `documentSymbol` / `findReferences` / `definition` to anchor each US/AC to `file:line`. Grep/Glob for discovery; LSP for precision. Never use LSP to enumerate the project. For 3+ independent areas, spawn parallel `Agent(subagent_type: "Explore", model: "haiku")` queries in a single message — Haiku 4.5 is the right tier for breadth scans.
 
 ### Anti-slop self-critique (before TaskCreate)
 
