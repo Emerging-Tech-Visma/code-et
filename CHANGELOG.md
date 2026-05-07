@@ -2,6 +2,21 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.0.1] - 2026-05-07
+
+### Changed — `/code:fix` Task Brief now states Goal + Verification
+
+The `/code:fix` Task Brief template (`code-et-implementer/commands/fix.md`) gains two mandatory lines after `Description`:
+
+- **Goal** — observable success criterion ("what's true after the fix that wasn't before").
+- **Verification** — runnable cmd + expected outcome (or manual repro steps for visual fixes).
+
+`/code:plan` already encoded this through `metadata.expected_outcome` + `metadata.verification`, which `/code:ship` injects into every dispatched subagent and enforces in the per-subagent contract. `/code:fix` hands the Brief straight to a human implementer — no orchestrator, no `SubagentStop` hook — so the goal-and-test pair belongs in the Brief itself. With the addition both lanes (bug + feature) close the "did we achieve it" loop symmetrically.
+
+The Rules section also gains: "If you can't state Verification, the bug isn't scoped tightly enough — ask another clarifying question."
+
+No changes to `/code:plan`, `/code:ship`, or the Clean Architecture rules — fix.md already references `code-et-implementer/docs/architecture.md` and the Layer column in the Files-to-touch table already enforces the Dependency Rule by inspection.
+
 ## [4.0.0] - 2026-05-06
 
 **Breaking restructure** — the plugin is now pure-Rust only and condenses to six commands. Existing PRDs and tasks under `plans/` and `.claude/<id>.json` continue to work, but the entry-point command names have changed. See the migration table below.
