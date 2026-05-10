@@ -54,13 +54,13 @@ Different roles in the workflow run on different models. The `Agent` tool's `mod
 | Role | Model | Where |
 |---|---|---|
 | Orchestrator (`/code:plan`, `/code:ship`) | `opus` (4.7) | Inherited; multi-step coordination + judgment. |
-| Per-task implementer | `sonnet` (4.6) | `/code:ship` — routine vertical-slice coding. |
-| Per-task reviewer | `sonnet` (4.6) | `/code:ship` — diff review via engineering plugin's `code-review` skill (falls back to inline 5-area checklist if the plugin isn't installed). |
-| Per-task review fix-pass | `sonnet` (4.6) | `/code:ship` — apply review findings, no scope expansion. |
+| Per-task implementer | `sonnet` (4.6) | `/code:ship` — routine vertical-slice coding from a complete brief. |
+| Per-task reviewer | `opus` (4.7) | `/code:ship` — diff review via engineering plugin's `code-review` skill (falls back to inline 5-area checklist if the plugin isn't installed). Bugs the reviewer misses fail silently; the 8-pt SWE-bench gap matters here. |
+| Per-task review fix-pass | `opus` (4.7) | `/code:ship` — applies reviewer findings; same model as reviewer for consistent judgment across find/fix. |
 | Post-merge audit fix-pass | `opus` (4.7) | `/code:ship` — judgment on layer slips, dep advisories, test failures. |
 | Explore (breadth searches) | `haiku` (4.5) | `/code:plan`, `/code:fix` — cheap parallel discovery. |
 
-The principle: heavy lifting (planning, judgment) on Opus; routine coding + diff review on Sonnet; breadth gathering on Haiku.
+The principle: heavy lifting (planning, judgment, review) on Opus; routine coding from a complete brief on Sonnet; breadth gathering on Haiku.
 
 ## Code Standards
 

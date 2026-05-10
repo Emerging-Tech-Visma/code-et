@@ -2,6 +2,25 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.2.0] - 2026-05-10
+
+### Changed — per-task reviewer + review fix-pass moved to Opus 4.7
+
+`/code:ship` now dispatches the per-task reviewer fork and the review fix-pass on `opus` (4.7) instead of `sonnet` (4.6). Implementer stays on Sonnet 4.6.
+
+**Why.** Anthropic's published benchmarks put Opus 4.7 at 87.6% on SWE-bench Verified vs Sonnet 4.6's 79.6% — an 8-point gap. The leverage of that gap is asymmetric across the two roles:
+
+- **Implementer errors** get caught by the reviewer + post-merge audit, so Sonnet's lower ceiling is recovered downstream.
+- **Reviewer errors fail silently** — a missed CRITICAL/HIGH finding ships into the feature branch. The cost of a bad review is much higher than the cost of a bad implementation.
+
+The review fix-pass moves with the reviewer to keep judgment consistent across the find/fix pair.
+
+The principle in `code-et-implementer/CLAUDE.md` updates accordingly: heavy lifting (planning, judgment, **review**) on Opus; routine coding from a complete brief on Sonnet; breadth gathering on Haiku.
+
+### Changed — `/code:fix` effort lowered xhigh → high
+
+`/code:fix` is single-bug intake: scope a bug into a Task Brief, ≤3 file edits. That's "multi-file work with design choices," not "architecture / multi-step coordination." Drops to `high` to match the actual workload. `/code:ship`, `/code:plan`, `/code:start` stay at `xhigh` (orchestrators with cross-cutting decisions).
+
 ## [4.1.0] - 2026-05-07
 
 ### Added — per-task review subagent in `/code:ship`

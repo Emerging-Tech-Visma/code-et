@@ -2,7 +2,7 @@
 tools: Read, Grep, Glob, Bash, Agent, LSP
 description: "Single-bug intake — scope work into a Task Brief. You implement directly. Generates/updates FILE-REFERENCE.md."
 argument-hint: "[bug description] or 'update' to refresh FILE-REFERENCE.md"
-effort: xhigh
+effort: high
 ---
 
 # Fix — Single-Bug Intake

@@ -22,8 +22,8 @@ Every task runs as a forked subagent in its own worktree. Use `Agent` with `isol
 |---|---|---|
 | Orchestrator (this skill) | inherits (Opus 4.7) | Multi-step coordination + decisions on partial failures. |
 | Per-task implementer | `sonnet` (4.6) | Routine vertical-slice coding from a complete brief. |
-| Per-task reviewer fork | `sonnet` (4.6) | Diff review via engineering plugin's `code-review` skill (falls back to inline 5-area checklist). |
-| Per-task review fix-pass | `sonnet` (4.6) | Apply review findings; no scope expansion. |
+| Per-task reviewer fork | `opus` (4.7) | Catching bugs the implementer missed is high-leverage — an 8-pt SWE-bench gap on the reviewer pays for itself. Reviewer errors fail silently; implementer errors get caught downstream. |
+| Per-task review fix-pass | `opus` (4.7) | Applies reviewer findings — same model as the reviewer to keep judgment consistent across the find/fix pair. |
 | Post-merge audit fix-pass | `opus` (4.7) | Judgment call on the audit gate — layer slips, dependency advisories. |
 | Explore (when delegated for breadth) | `haiku` (4.5) | Cheap breadth searches for cold areas. Implementer/reviewer prompt may request this. |
 
@@ -105,9 +105,9 @@ diff="$(git -C <worktree_path> diff $(git merge-base HEAD <subagent_branch>)..<s
 
 Empty diff = implementer didn't write code. Halt that task and surface to the user; do not dispatch a reviewer.
 
-### Step 2 — Dispatch the reviewer (Sonnet 4.6)
+### Step 2 — Dispatch the reviewer (Opus 4.7)
 
-Reviewer is a fork — `Agent(model: "sonnet")` with no `subagent_type` and no `isolation`. It works against the diff payload, not the worktree.
+Reviewer is a fork — `Agent(model: "opus")` with no `subagent_type` and no `isolation`. It works against the diff payload, not the worktree.
 
 If the diff exceeds **1500 lines**, halt this task and surface a "task too large — split or escalate to `/code:review` only" warning instead of dispatching. A vertical slice that big is almost always two slices in disguise.
 
@@ -153,7 +153,7 @@ Drop MEDIUM and LOW findings — those are for `/code:review` to catch later. Do
 
 ### Step 3 — On CRITICAL/HIGH findings, dispatch ONE review fix-pass
 
-Spawn `Agent(subagent_type: "general-purpose", model: "sonnet")` with no isolation. Prompt directs it to operate via `git -C <worktree_path>` and explicit file paths inside `<worktree_path>`:
+Spawn `Agent(subagent_type: "general-purpose", model: "opus")` with no isolation. Prompt directs it to operate via `git -C <worktree_path>` and explicit file paths inside `<worktree_path>`:
 
 ```
 # Review fix-pass for <task-id>
