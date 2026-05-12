@@ -2,6 +2,16 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.2.1] - 2026-05-12
+
+### Fixed — TaskCreated hook rejects valid metadata when harness stringifies it
+
+`scripts/task-created-tag-check.sh` extracted `user_story` / `layer` with `jq -r '.tool_input.metadata.user_story'`, which only works when `metadata` arrives as a JSON object. The Claude Code harness sometimes delivers `tool_input.metadata` as a JSON-encoded **string** instead — `jq` returns empty, and well-formed TaskCreate calls were rejected with "required metadata is missing or invalid" even though the caller passed `user_story: "US-1", layer: "domain"` correctly.
+
+**Fix.** Normalize before extracting: if `metadata` is a string, parse it via `fromjson?`; otherwise pass through. Both shapes route through the same downstream validation, so `US-<N>` / `AC-<N>.<M>` / `chore:<reason>` plus the Rust layer check work regardless of how the harness serialized the payload. Empty/invalid metadata still rejects.
+
+Verified against five payload shapes (object form, two string forms, empty, bogus tag).
+
 ## [4.2.0] - 2026-05-10
 
 ### Changed — per-task reviewer + review fix-pass moved to Opus 4.7
