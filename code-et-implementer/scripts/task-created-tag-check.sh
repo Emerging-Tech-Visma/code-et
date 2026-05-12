@@ -9,8 +9,10 @@ payload="$(cat)"
 
 prd="$("$here/resolve-prd.sh" 2>/dev/null || true)"
 
-tag="$(printf '%s' "$payload" | jq -r '.tool_input.metadata.user_story // ""' 2>/dev/null || echo '')"
-layer="$(printf '%s' "$payload" | jq -r '.tool_input.metadata.layer // ""' 2>/dev/null || echo '')"
+# metadata may arrive as an object OR as a JSON-encoded string (harness quirk).
+md="$(printf '%s' "$payload" | jq -c '(.tool_input.metadata // {}) | if type=="string" then (fromjson? // {}) else . end' 2>/dev/null || echo '{}')"
+tag="$(printf '%s' "$md" | jq -r '.user_story // ""' 2>/dev/null || echo '')"
+layer="$(printf '%s' "$md" | jq -r '.layer // ""' 2>/dev/null || echo '')"
 
 if [ -z "$prd" ]; then
   # Bug lane — anything goes
