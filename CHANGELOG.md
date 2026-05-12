@@ -2,6 +2,18 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.2.2] - 2026-05-12
+
+### Fixed — TaskCreated hook rejects valid metadata under unknown envelope shapes
+
+v4.2.1 normalised `tool_input.metadata` when the harness stringified it, but other sessions kept hitting "required metadata is missing or invalid" with well-formed TaskCreate calls. Direct shell invocation of the hook with `{"tool_input":{"metadata":{...}}}` passed, while the live harness still rejected — symptom of a different envelope shape we couldn't see, because auto-mode (correctly) refuses to let an agent self-modify a plugin hook to capture the live payload.
+
+**Fix.** Make `scripts/task-created-tag-check.sh` envelope-agnostic. Extraction now tries, in order: `tool_input.metadata` (object or JSON-string), `tool_input` (fields flattened directly), `.metadata` (no wrapper), the payload-as-string parsed once, then a deep search across the JSON tree for `user_story` / `layer` keys. Whatever shape the harness uses, valid metadata gets found.
+
+**Diagnostics.** When the hook does reject, it now writes the raw payload plus the extraction trace to `$TMPDIR/code-et-task-hook/last-rejected.json` and references that path in the error message. Next time a TaskCreate genuinely fails, the actual envelope is on disk — no wrapper script, no auto-mode prompt.
+
+Verified against twelve payload shapes (object, stringified, flattened, root-level, deeply nested, plus the original PRD/bug-lane matrix).
+
 ## [4.2.1] - 2026-05-12
 
 ### Fixed — TaskCreated hook rejects valid metadata when harness stringifies it

@@ -60,3 +60,43 @@ teardown() { rm -rf "$REPO"; }
   run bash -c 'echo "{\"tool_input\":{\"metadata\":{\"user_story\":\"none\"}}}" | "$0"' "$SCRIPT"
   [ "$status" -eq 0 ]
 }
+
+@test "tolerates stringified metadata when PRD exists" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  run bash -c 'echo "{\"tool_input\":{\"metadata\":\"{\\\"user_story\\\":\\\"US-3\\\"}\"}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 0 ]
+}
+
+@test "tolerates flattened metadata fields on tool_input" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  run bash -c 'echo "{\"tool_input\":{\"user_story\":\"US-3\",\"layer\":\"interface\"}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 0 ]
+}
+
+@test "tolerates metadata at payload root (no tool_input wrapper)" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  run bash -c 'echo "{\"metadata\":{\"user_story\":\"AC-1.2\"}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 0 ]
+}
+
+@test "deep-searches for user_story in nested envelopes" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  run bash -c 'echo "{\"params\":{\"input\":{\"task\":{\"metadata\":{\"user_story\":\"US-7\"}}}}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 0 ]
+}
+
+@test "rejection writes diagnostic dump to debug_dir" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  export TMPDIR="$REPO/tmp"
+  mkdir -p "$TMPDIR"
+  run bash -c 'echo "{\"tool_input\":{\"metadata\":{\"user_story\":\"bogus\"}}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 2 ]
+  [ -f "$TMPDIR/code-et-task-hook/last-rejected.json" ]
+  run jq -r '.extracted.user_story' "$TMPDIR/code-et-task-hook/last-rejected.json"
+  [ "$output" = "bogus" ]
+}
