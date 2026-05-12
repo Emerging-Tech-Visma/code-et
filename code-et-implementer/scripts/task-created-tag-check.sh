@@ -1,5 +1,14 @@
 #!/usr/bin/env bash
-# TaskCreated hook: enforce user_story tag on branches with an active PRD.
+# PreToolUse(TaskCreate) hook: enforce user_story tag (and layer on Rust)
+# on branches with an active PRD. Runs *before* the task is created so we
+# reject the call instead of orphaning a malformed task.
+#
+# Pre-v4.2.3 this ran on the `TaskCreated` lifecycle event, which delivers
+# a flat post-hoc payload (task_id, task_subject, task_description) with
+# no `metadata` field — so well-formed calls were uniformly rejected. The
+# `tool_input.metadata` payload only exists on the tool-call envelope
+# (PermissionRequest / PreToolUse), not the lifecycle event.
+#
 # Exit 0 = allow, exit 2 = block (per Claude Code hook contract).
 
 set -euo pipefail

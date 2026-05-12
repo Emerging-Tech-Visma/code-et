@@ -89,6 +89,20 @@ teardown() { rm -rf "$REPO"; }
   [ "$status" -eq 0 ]
 }
 
+@test "accepts real PreToolUse(TaskCreate) envelope with metadata" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  run bash -c 'echo "{\"session_id\":\"s1\",\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"TaskCreate\",\"tool_input\":{\"subject\":\"T1\",\"description\":\"d\",\"metadata\":{\"user_story\":\"US-1\",\"layer\":\"interface\"}}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 0 ]
+}
+
+@test "rejects real PreToolUse(TaskCreate) envelope without metadata" {
+  touch plans/2026-04-20-dark-mode.md
+  git checkout -q -b feature/dark-mode
+  run bash -c 'echo "{\"session_id\":\"s1\",\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"TaskCreate\",\"tool_input\":{\"subject\":\"T1\",\"description\":\"d\"}}" | "$0"' "$SCRIPT"
+  [ "$status" -eq 2 ]
+}
+
 @test "rejection writes diagnostic dump to debug_dir" {
   touch plans/2026-04-20-dark-mode.md
   git checkout -q -b feature/dark-mode

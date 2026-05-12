@@ -36,9 +36,9 @@
         ]
       }
     ],
-    "TaskCreated": [
+    "PreToolUse": [
       {
-        "matcher": "",
+        "matcher": "TaskCreate",
         "hooks": [
           {
             "type": "command",
