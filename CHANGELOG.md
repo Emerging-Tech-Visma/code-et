@@ -2,6 +2,30 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.2.3] - 2026-05-12
+
+### Fixed — task-metadata hook was wired to the wrong event
+
+The diagnostic dump added in 4.2.2 captured the live payload at last: the script was wired to `TaskCreated` (a *lifecycle* event that fires after the task is in the store), and that envelope is flat — `session_id`, `hook_event_name`, `task_id`, `task_subject`, `task_description`. No `tool_input`, no `metadata`. The metadata only rides on the *tool-call* envelope, not the lifecycle event. Every well-formed `TaskCreate` call was getting rejected because the hook was reading a field that never exists on the payload it receives.
+
+`TaskCreate`'s tool schema confirms `metadata` is a top-level call parameter, so the right hook is `PreToolUse` matched on `TaskCreate` — which fires *before* the task is created, with the raw `tool_input` (including `metadata`) intact. Two wins from the move: agents that forget `metadata` get rejected before an orphan task lands in the store, and the existing extractor's first try (`tool_input.metadata`) now works against the real envelope without falling through to the deep-search fallback.
+
+**Changed.** `hooks/hooks.json` swaps `TaskCreated` (empty matcher) for `PreToolUse` (matcher: `TaskCreate`). The script keeps its v4.2.2 envelope-agnostic extractor and rejection-time payload dump — both still pay off the next time the contract drifts.
+
+Verified against the captured real-world envelope plus two new bats cases (14/14 pass).
+
+## [4.2.2] - 2026-05-12
+
+### Fixed — TaskCreated hook rejects valid metadata under unknown envelope shapes
+
+v4.2.1 normalised `tool_input.metadata` when the harness stringified it, but other sessions kept hitting "required metadata is missing or invalid" with well-formed TaskCreate calls. Direct shell invocation of the hook with `{"tool_input":{"metadata":{...}}}` passed, while the live harness still rejected — symptom of a different envelope shape we couldn't see, because auto-mode (correctly) refuses to let an agent self-modify a plugin hook to capture the live payload.
+
+**Fix.** Make `scripts/task-created-tag-check.sh` envelope-agnostic. Extraction now tries, in order: `tool_input.metadata` (object or JSON-string), `tool_input` (fields flattened directly), `.metadata` (no wrapper), the payload-as-string parsed once, then a deep search across the JSON tree for `user_story` / `layer` keys. Whatever shape the harness uses, valid metadata gets found.
+
+**Diagnostics.** When the hook does reject, it now writes the raw payload plus the extraction trace to `$TMPDIR/code-et-task-hook/last-rejected.json` and references that path in the error message. Next time a TaskCreate genuinely fails, the actual envelope is on disk — no wrapper script, no auto-mode prompt.
+
+Verified against twelve payload shapes (object, stringified, flattened, root-level, deeply nested, plus the original PRD/bug-lane matrix).
+
 ## [4.2.1] - 2026-05-12
 
 ### Fixed — TaskCreated hook rejects valid metadata when harness stringifies it
