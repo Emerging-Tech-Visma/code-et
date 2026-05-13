@@ -2,6 +2,22 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.3.0] - 2026-05-13
+
+### Changed — `/code:plan` emits structured `files[]` entries; `/code:ship` consumes them
+
+`metadata.files` was an array of `path:line` strings — flat, lossy, and a tax the subagent paid in tokens. Plan-time LSP already resolved each acceptance criterion to a qualified symbol (per the existing "LSP for symbols" rule), but the symbol name was thrown away before `TaskCreate`, leaving the implementer subagent to rediscover it with `Grep` + `Read` on a cold start. On an 8-task `/code:ship` run that's 16-48k tokens of pure rediscovery — paid every time, for information the orchestrator already had.
+
+**Changed.** Each `files[]` entry is now `{path, symbol, line, op}` where `op ∈ {add, modify, replace, delete}`. `path` + `op` are required; `symbol` is required for `modify|replace|delete` and recommended for `add`; `line` is an LSP-resolved hint. The contract is `symbol` — if the line drifts between plan and ship, the implementer re-resolves via `documentSymbol`. Deletion of superseded code, previously buried in prose under `rationale`, is now an explicit `op: "delete"` entry — typed action, not a narrative aside.
+
+**Plan-time validation.** Before `TaskCreate`, every `path` is checked against `git ls-files` (for `modify|replace|delete`) or against `FILE-REFERENCE.md`'s documented top-level areas when that file exists (for `add`). Stale references caught at plan time are subagent dispatches not wasted.
+
+**Ship-side rendering.** `/code:ship`'s dispatch prompt renders each entry as `- <op> <path>[:<line>] → <symbol>`, so the subagent receives a typed action list rather than a bare path list. The cold-start cost drops from "find the symbol" to "open the file, jump to the symbol."
+
+**Token math.** ~35 extra tokens per entry × ~8 tasks = ~280 tokens at plan time, against 15-45k saved per `/code:ship` dispatch. The LSP work was already happening; the change is to *persist* it instead of recomputing it inside every subagent.
+
+Files touched: `commands/plan.md`, `commands/ship.md`, `CLAUDE.md`.
+
 ## [4.2.3] - 2026-05-12
 
 ### Fixed — task-metadata hook was wired to the wrong event

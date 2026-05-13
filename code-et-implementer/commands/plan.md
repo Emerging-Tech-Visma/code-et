@@ -130,7 +130,13 @@ Read the PRD (it is the authoritative spec).
 
 **Replace, don't accumulate.** When a slice supersedes existing logic, the task scope **includes deletion of the superseded code**. State the `path:line` being replaced in `metadata.rationale`. No parallel utilities, no `// TODO: remove old X`.
 
-**LSP for symbols.** Use `documentSymbol` / `findReferences` / `definition` to anchor each US/AC to `file:line`. Grep/Glob for discovery; LSP for precision. Never use LSP to enumerate the project. For 3+ independent areas, spawn parallel `Agent(subagent_type: "Explore", model: "haiku")` queries in a single message — Haiku 4.5 is the right tier for breadth scans.
+**LSP for symbols.** Use `documentSymbol` / `findReferences` / `definition` to resolve each US/AC to a `{path, symbol, line, op}` entry — persist the result in `metadata.files[]` (schema below). Do not throw away the symbol name; that's the contract the subagent edits against if `line` drifts. Grep/Glob for discovery; LSP for precision. Never use LSP to enumerate the project. For 3+ independent areas, spawn parallel `Agent(subagent_type: "Explore", model: "haiku")` queries in a single message — Haiku 4.5 is the right tier for breadth scans.
+
+**Path validation.** Before `TaskCreate`, validate every `files[].path`:
+- `op ∈ {modify, replace, delete}` → path must appear in `git ls-files`. If not, the symbol moved or was deleted — re-resolve via LSP or drop the entry.
+- `op = add` → path must either appear in `git ls-files` (append to existing file) or, if `FILE-REFERENCE.md` exists at repo root, sit under a documented top-level area there. Reject paths under undocumented top-level directories when `FILE-REFERENCE.md` is present; otherwise accept any path the workspace `Cargo.toml` covers.
+
+Path drift caught at plan time is one less wasted subagent dispatch.
 
 ### Anti-slop self-critique (before TaskCreate)
 
@@ -150,15 +156,28 @@ The list lives in `code-et-implementer/docs/anti-slop.md`; the inline summary ab
 ```json
 {
   "verification": "<cmd that exercises the slice end-to-end>",
-  "files": ["crates/<layer>/src/path.rs:42", ...],
+  "files": [
+    {"path": "crates/<layer>/src/path.rs", "symbol": "Type::method", "line": 42, "op": "modify"},
+    {"path": "crates/<layer>/src/new_file.rs", "symbol": "NewType", "op": "add"},
+    {"path": "crates/<layer>/src/legacy.rs", "symbol": "deprecated_fn", "line": 89, "op": "delete"}
+  ],
   "expected_outcome": "<observable end-to-end behaviour>",
-  "rationale": "<1-2 sentences: why this slice exists, the constraint driving it. If replacing existing code, name the path:line being deleted.>",
+  "rationale": "<1-2 sentences: why this slice exists, the constraint driving it.>",
   "user_story": "US-N | AC-N.M | chore:<reason>",
   "layer": "domain | application | infrastructure | interface | chore"
 }
 ```
 
-`rationale` is mandatory — the subagent starts cold and needs the *why*. `layer` is mandatory; the per-file layer also feeds the validator on every file the task touches. `verification` exercises the full slice — `cargo nextest run -p <crate>` for unit, `cargo nextest run --workspace` for cross-layer.
+**`files[]` entry shape:**
+
+| Field | Required | Notes |
+|---|---|---|
+| `path` | always | Workspace-relative. Validated against `git ls-files` (`modify\|replace\|delete`) or `FILE-REFERENCE.md` modules (`add`). |
+| `op` | always | `add` (create symbol), `modify` (edit body), `replace` (full rewrite — pair with sibling `delete` if cross-file supersession), `delete` (remove symbol). |
+| `symbol` | for `modify\|replace\|delete`; recommended for `add` | Qualified Rust path: `User::validate`, `db::pool`, `routes::auth::login`. Resolved via LSP `documentSymbol`. |
+| `line` | optional hint | Current line at plan time. Implementer re-resolves via LSP if it drifts. Omit for `add` on a new file. |
+
+`rationale` is mandatory — the subagent starts cold and needs the *why*. `layer` is mandatory; the per-file layer also feeds the validator on every file the task touches. Deletion of superseded code is encoded as explicit `op: "delete"` entries in `files[]`, not prose in `rationale`. `verification` exercises the full slice — `cargo nextest run -p <crate>` for unit, `cargo nextest run --workspace` for cross-layer.
 
 Set dependencies with `TaskUpdate(addBlockedBy)`. Independent slices stay parallel.
 
