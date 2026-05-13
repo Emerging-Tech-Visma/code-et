@@ -35,13 +35,19 @@ Tasks created with `TaskCreate` carry:
 ```
 metadata: {
   verification: "cargo nextest run && cargo clippy --all-targets -- -D warnings",
-  files: ["crates/<layer>/src/path/to/file.rs:42"],
+  files: [
+    {"path": "crates/<layer>/src/path/to/file.rs", "symbol": "Type::method", "line": 42, "op": "modify"},
+    {"path": "crates/<layer>/src/new.rs", "symbol": "NewType", "op": "add"},
+    {"path": "crates/<layer>/src/legacy.rs", "symbol": "old_fn", "line": 89, "op": "delete"}
+  ],
   expected_outcome: "what success looks like",
   rationale: "why this task exists — the constraint or decision driving it",
   user_story: "US-N" | "AC-N.M" | "chore:<reason>",
   layer: "domain" | "application" | "infrastructure" | "interface" | "chore"
 }
 ```
+
+`files[]` entries: `path` + `op` always required; `symbol` required for `modify|replace|delete`; `line` is an LSP-resolved hint (drift-tolerant — `symbol` is the contract). Full schema and validation rules in `commands/plan.md` §"TaskCreate metadata".
 
 `rationale` is mandatory. Subagents in `/code:ship` start cold — they need the *why*, not just the *what*, to make judgment calls.
 

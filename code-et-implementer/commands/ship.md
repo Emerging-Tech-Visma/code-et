@@ -46,7 +46,13 @@ Each subagent starts cold. Send one comprehensive first turn — intent, constra
 <metadata.rationale — verbatim from plan. The why, not the what.>
 
 ## Files to touch
-<metadata.files — exact file:line anchors. Read these before editing.>
+<For each metadata.files[] entry, render one bullet:
+  "- <op> <path>[:<line>] → <symbol>"
+omitting ":<line>" if absent and "→ <symbol>" if absent. Examples:
+  - modify crates/domain/src/user.rs:42 → User::validate
+  - add crates/infrastructure/src/db/users.rs → UserRepository
+  - delete crates/infrastructure/src/legacy.rs:89 → old_validate_fn
+Read each entry's file (sliced) before editing. `line` is a hint — if the symbol has moved, re-resolve via LSP `documentSymbol`; `symbol` is the contract. Apply each op exactly: `add` creates, `modify` edits in place, `replace` full-rewrites the symbol, `delete` removes it (plus all references).>
 
 ## Layer
 <metadata.layer — domain | application | infrastructure | interface | chore. Imports point inward; `cargo build` enforces this.>
