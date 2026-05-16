@@ -2,6 +2,22 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [4.3.1] - 2026-05-17
+
+### Fixed — `/code:plan` → `/code:ship` handoff: schema trap, silent rejection, stale-task pollution
+
+A live `/code:plan` session emitted `metadata.user_story = "US-1 | AC-1.1, AC-1.2"`, the PreToolUse hook (`scripts/task-created-tag-check.sh`) correctly rejected it, but the orchestrator silently continued as if the task had been created. A subsequent `/clear` + `/code:ship` then read an empty `TaskList` (only stale items #33–#37 from a prior branch's PRD remained), reported "no queue," and exited. Three compounding bugs, fixed in priority order.
+
+**Bug 1 — schema-doc trap (`commands/plan.md`).** The TaskCreate metadata example showed `"user_story": "US-N | AC-N.M | chore:<reason>"` and `"layer": "domain | application | infrastructure | interface | chore"`, with pipe-alternation in value position. The `|` was meant as a "one-of" reading aid but the planner read it as value composition — concatenating a US tag with the ACs it covers — which the regex rejects. Fix: replace the example values with concrete singular tags (`"US-1"`, `"interface"`) and lift the allowed-forms enumeration into adjacent prose, so the schema can't be copied verbatim into a rejected call.
+
+**Bug 2 — no recovery from hook rejection (`commands/plan.md` §"On TaskCreate rejection").** Phase 3 had no instruction for handling exit-2 from the hook. The orchestrator narrated forward (`"Now wiring task dependencies…"`) on phantom task ids and `TaskUpdate(addBlockedBy)` did nothing visible. Fix: explicit guidance — read `${TMPDIR}/code-et-task-hook/last-rejected.json`, identify the bad field, re-issue the same TaskCreate with corrected metadata, do not call `TaskUpdate` on phantom ids. Three retries on the same field escalates to the user (structural PRD misread, not a typo).
+
+**Bug 3 — silent empty queue in `/code:ship` + cross-branch stale-task pollution (`commands/ship.md` §"Pre-dispatch").** `TaskList` is project-global, not branch-scoped — pending tasks from a merged PRD persist as `pending` on every subsequent branch (the live session showed #33–#37 from `visma-agentic-platform-shell` still pending after that PR's merge in `4f98ac3`). `/code:ship` was dispatching whatever TaskList returned, with no awareness that those tasks belonged to a different PRD; conversely, when *no* tasks tied to the current PRD existed, it exited with "no queue" instead of diagnosing the gap. Fix: resolve the active PRD, parse its `## Story Checklist` for US tags, and scope the dispatch queue to tasks whose `metadata.user_story` matches one of those US/AC tags **or** starts with `chore:` (chores during a feature are this-branch work via `/code:fix`, never stale). The empty-queue branch now distinguishes three cases (PRD exists / no tasks tied; PRD exists / tasks belong to a different PRD; no PRD / no tasks) and emits a specific next-step message for each. Stale tasks from prior branches are left untouched — they belong to their owning branch, not this one.
+
+**Known follow-up.** This release prevents *dispatch* of stale tasks but does not *clear* them — #33–#37 will keep appearing on every `/code:ship` until manually `TaskUpdate`'d to completed. A v4.3.2 task-completion-on-PR-merge hook is the proper fix; until then, run `TaskUpdate(id, status: completed)` on any task whose owning PR has merged.
+
+Files touched: `code-et-implementer/commands/plan.md`, `code-et-implementer/commands/ship.md`, `code-et-implementer/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` (also catching up the 4.3.0 marketplace bump that was missed in #64).
+
 ## [4.3.0] - 2026-05-13
 
 ### Changed — `/code:plan` emits structured `files[]` entries; `/code:ship` consumes them

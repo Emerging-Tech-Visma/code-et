@@ -5,7 +5,7 @@
   },
   "metadata": {
     "description": "Pure-Rust Clean Architecture workflow. Six commands (start, fix, plan, ship, review, install-ci) for axum + sqlx + Dioxus 0.7+ + tokio. Always-latest deps, CI audit gate, anti-slop enforced.",
-    "version": "4.2.3"
+    "version": "4.3.1"
   },
   "plugins": [
     {
