@@ -163,10 +163,20 @@ The list lives in `code-et-implementer/docs/anti-slop.md`; the inline summary ab
   ],
   "expected_outcome": "<observable end-to-end behaviour>",
   "rationale": "<1-2 sentences: why this slice exists, the constraint driving it.>",
-  "user_story": "US-N | AC-N.M | chore:<reason>",
-  "layer": "domain | application | infrastructure | interface | chore"
+  "user_story": "US-1",
+  "layer": "interface"
 }
 ```
+
+**`user_story` — pick exactly one tag, no concatenation.** Allowed forms:
+
+- `US-<N>` — the primary user story this slice delivers (e.g. `"US-1"`).
+- `AC-<N>.<M>` — a single acceptance criterion when the slice is narrower than a full story (e.g. `"AC-1.2"`).
+- `chore:<reason>` — non-PRD work (e.g. `"chore:bump-deps"`).
+
+Do **not** emit values like `"US-1 | AC-1.1, AC-1.2"` or `"US-1, US-2"`. The pipes/commas in this doc are reading aids, not value separators — the `PreToolUse(TaskCreate)` hook regex matches a single tag and rejects anything else (see `scripts/task-created-tag-check.sh`). If one slice satisfies multiple ACs of the same story, tag it with the story (`"US-<N>"`); the ACs it covers belong in `expected_outcome` / tests, not the tag.
+
+**`layer` — pick exactly one.** Allowed values: `"domain"`, `"application"`, `"infrastructure"`, `"interface"`, `"chore"`. A vertical slice may touch multiple layers via `files[]`, but the task's *primary* layer (the one this tag names) is the innermost layer the slice modifies.
 
 **`files[]` entry shape:**
 
@@ -182,6 +192,17 @@ The list lives in `code-et-implementer/docs/anti-slop.md`; the inline summary ab
 Set dependencies with `TaskUpdate(addBlockedBy)`. Independent slices stay parallel.
 
 Save manifest to `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`.
+
+### On `TaskCreate` rejection
+
+The `PreToolUse(TaskCreate)` hook (`scripts/task-created-tag-check.sh`) validates `metadata.user_story` and, on Rust projects, `metadata.layer` before the task is created. **A rejection means the task does NOT exist.** Treat this as a hard stop on that call, never narrate forward:
+
+1. Read the dump at `${TMPDIR:-/tmp}/code-et-task-hook/last-rejected.json` — the `extracted` field shows what the hook actually parsed.
+2. Most-common cause: `user_story` contains alternation copied from this doc (`"US-1 | AC-1.1, AC-1.2"`) instead of one tag. Pick a single allowed form (above).
+3. Re-issue the same `TaskCreate` with corrected metadata. Do not call `TaskUpdate` on a phantom id — the previous call returned no task.
+4. Only proceed to the next slice once the prior `TaskCreate` returned a real task id.
+
+If three retries in a row reject for the same field, stop and surface the rejection payload to the user — the planner has misread something structural in the PRD, not a typo.
 
 ### Output
 

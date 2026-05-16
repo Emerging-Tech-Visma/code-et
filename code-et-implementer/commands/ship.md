@@ -12,6 +12,33 @@ Loads pending tasks from `TaskList` (or `.claude/${CLAUDE_CODE_TASK_LIST_ID}.jso
 
 If the current branch is `main` or `master`, create `feature/<slug-from-prd-or-tasks>` first.
 
+## Pre-dispatch: scope the queue to this branch's PRD
+
+`TaskList` is global across the project, not branch-scoped — pending tasks from prior PRDs leak into a fresh branch and would otherwise re-execute against stale spec. Before dispatching, scope the queue:
+
+1. Resolve the active PRD:
+   ```
+   Bash('"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh"')
+   ```
+   Exit 1 = no PRD for this branch → bug lane: ship whatever pending tasks exist (their tags should be `chore:*` from `/code:fix`). Otherwise capture the path.
+2. Parse the PRD's `## Story Checklist` to enumerate the US tags that belong to it (`US-1`, `US-2`, …). A pending task belongs to this branch iff one of:
+   - `metadata.user_story` matches a `US-<N>` in the set, or
+   - `metadata.user_story` is `AC-<N>.<M>` whose `<N>` is in the set, or
+   - `metadata.user_story` starts with `chore:` (chores during a feature are this-branch work — `/code:fix` runs against the current tree, not the previous PRD).
+
+   All other pending tasks are stale-from-another-branch and **must be skipped** — do not dispatch them, do not mark them completed; leave them for their owning branch.
+3. Build the dispatch queue from the scoped subset only.
+
+**Empty-queue diagnostics — never exit silently.** If after scoping the queue is empty, the situation is one of three, each with a distinct message:
+
+| Condition | Surface |
+|---|---|
+| PRD resolved, no pending tasks match its US tags | `Active PRD: <path>. 0 tasks tied to its user stories. Run /code:plan to decompose the PRD before /code:ship.` |
+| PRD resolved, pending tasks exist but all match a *different* PRD | `Active PRD: <path>. Pending tasks (<count>) belong to a different PRD (<their tags>). Either switch branch or run /code:plan on this branch.` |
+| No PRD, no pending tasks | `No PRD for this branch and no pending tasks. Nothing to ship — run /code:fix or /code:plan first.` |
+
+In every case, **stop**. Do not invent tasks, do not dispatch the prior branch's queue.
+
 ## Dispatch
 
 Every task runs as a forked subagent in its own worktree. Use `Agent` with `isolation: "worktree"`, `subagent_type: "general-purpose"`, and `model: "sonnet"` (Sonnet 4.6 — routine coding tier). **Do not** shell out to `git worktree add` — `isolation: "worktree"` handles it (requires `CLAUDE_CODE_FORK_SUBAGENT=1` on external builds; default-on inside this harness).
