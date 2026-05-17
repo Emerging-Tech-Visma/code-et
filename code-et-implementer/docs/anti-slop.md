@@ -54,7 +54,7 @@ When CI is green but something still feels wrong, look for these. The engineerin
 
 ## Lint stack — Biome only
 
-code-et uses **[Biome](https://biomejs.dev)** for both linting *and* formatting. One binary, one config (`biome.json`), one mental model. There is no ESLint, no Prettier, no separate import sorter, and (this is the v4-to-v5 change) no Rust toolchain anywhere.
+code-et uses **[Biome](https://biomejs.dev)** for both linting *and* formatting. One binary, one config (`biome.json`), one mental model. No ESLint, no Prettier, no separate import sorter — Biome covers all three.
 
 What the bundled `biome.json` turns on beyond Biome's `recommended` set:
 

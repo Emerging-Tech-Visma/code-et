@@ -19,7 +19,7 @@ The audit runs `biome check`, `tsc --noEmit`, `bun audit`, `bun test`. See [`doc
    Bash('test -f package.json && echo OK || echo "Not a TS/Node project (no package.json)"')
    ```
 
-   If not a TS project, stop with: *"This is for TypeScript / Bun projects. For a Rust project, install code-et v4.x."*
+   If `package.json` is missing, stop with: *"`code-et` v5 targets TypeScript / Bun projects. Run `/code:start` to scaffold a fresh one, or add a `package.json` first if you intend to retrofit."*
 
 2. **Detect existing workflow.**
 
