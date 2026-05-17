@@ -1,162 +1,185 @@
 ---
 name: architecture
-description: Rust Clean Architecture doctrine for code-et. Loaded on demand by /code:start, /code:fix, /code:plan, /code:ship.
-applies_to: rust
+description: Deep-modules TypeScript architecture for code-et. Loaded on demand by /code:start, /code:fix, /code:plan, /code:ship.
+applies_to: typescript
 ---
 
-# Rust Clean Architecture (code-et)
+# Architecture — Deep Modules (code-et v5)
 
-The single architecture this plugin scaffolds and enforces. Project shape: `axum + sqlx + dioxus + tokio` full-stack. Frontend: **Dioxus 0.7+ for web, desktop, and mobile from one component tree.** Database: **PostgreSQL on GCP Cloud SQL** for production, **SQLite** for local. Layer enforcement is at the `cargo` level — violating imports fail at `cargo build`, not at runtime.
+code-et builds **deep modules** on a TypeScript stack: `Bun + Hono + Drizzle + Vite + React`. There is no fixed layer taxonomy. Modules grow organically around interfaces; the goal is **leverage at the interface** and **locality** for the maintainer.
 
-## Layer model — the four crates
+> The vocabulary in this document — *module / interface / seam / adapter / depth / leverage / locality* — is established software-engineering terminology. **Deep modules** trace to Ousterhout's *A Philosophy of Software Design*; **seams** to Feathers' *Working Effectively with Legacy Code*. The terms are used here exactly as those sources define them so plan, ship, and review share a stable language.
 
-```
-crates/
-  domain/           Entities, value objects, domain errors. Pure logic.
-                    deps: serde, thiserror, uuid, time. NO workspace deps.
-  application/      Use cases + ports (traits). Orchestrates domain.
-                    deps: domain. async-trait, anyhow.
-  infrastructure/   Adapters: sqlx repos, HTTP clients, GCP secret manager.
-                    Implements application's port traits.
-                    deps: application + domain. sqlx, reqwest, tokio.
-  interface/        Dioxus components + axum handlers. Composition lives in apps/.
-                    deps: application + domain. dioxus, axum, tower.
-                    NEVER depends on infrastructure — apps/ wire the two.
-apps/
-  server/   bin: axum + dioxus-fullstack SSR.
-  desktop/  bin: dioxus-desktop renderer.
-  web/      bin: dioxus-web (WASM).
-  mobile/   bin: dioxus-mobile (iOS + Android).
-```
+## Stack — what every code-et project ships
 
-Each `apps/<name>/main.rs` is the **composition root** — the only place that instantiates concrete `infrastructure` types and wires them into `interface` ports. The Dependency Rule is enforced because `interface/Cargo.toml` does not list `infrastructure` as a dependency. Adding it makes `cargo build` fail.
-
-## The Dependency Rule (from Uncle Bob, verbatim)
-
-> The overriding rule that makes this architecture work is *The Dependency Rule*. This rule says that *source code dependencies* can only point *inwards*. Nothing in an inner circle can know anything at all about something in an outer circle. In particular, the name of something declared in an outer circle must not be mentioned by the code in the an inner circle. That includes, functions, classes. variables, or any other named software entity.
->
-> By the same token, data formats used in an outer circle should not be used by an inner circle, especially if those formats are generate by a framework in an outer circle. We don't want anything in an outer circle to impact the inner circles.
-
-Mapped to our four crates:
-
-| Layer (inner → outer) | May depend on | Must not import |
+| Concern | Choice | Why |
 |---|---|---|
-| `domain` | (nothing in workspace) | any other workspace crate |
-| `application` | `domain` | `infrastructure`, `interface` |
-| `infrastructure` | `application`, `domain` | `interface` |
-| `interface` | `application`, `domain` | `infrastructure` |
+| Runtime | **Bun** | Single binary; built-in test runner, package manager, bundler. Fast cold-starts, native TypeScript. |
+| HTTP server | **Hono** | Tiny, type-safe router. Runs on Bun, Node, Workers, Deno. |
+| DB access | **Drizzle ORM** | Type-safe queries; SQL-first. SQLite for local + dev, Postgres for prod. |
+| Migrations | **drizzle-kit** | Schema → migration. Forward-only. |
+| Web UI (optional) | **Vite + React 19** | Dev-server speed; same TS types shared with the server module. |
+| Validation | **Zod** | Single source of truth at the interface seam (HTTP, queue, file). |
+| Tests | **Bun test** | In-runtime. Same `expect`/`describe`/`it` shape as Vitest/Jest. |
+| Lint + format | **Biome** | One binary; replaces ESLint+Prettier. |
 
-The `Cargo.toml` `[dependencies]` table is the enforcement mechanism. The CI workflow's `layer-deps-validator.sh` adds a defence-in-depth check; the compiler is the primary gate.
+Desktop and mobile are **out of scope**. If you need them, fork the template; code-et does not maintain a multi-target frontend story.
 
-## Crossing boundaries
+## Vocabulary — use these terms exactly
 
-**DTOs only.** When data crosses a boundary, it is a plain struct or function argument — never a `domain::Entity` and never a `sqlx::Row`. `interface` accepts a JSON request, parses it into an `application::Command` DTO, hands it to a use case. The use case returns a `application::Response` DTO that `interface` serialises out.
+- **Module** — anything with an interface and an implementation. Scale-agnostic: a function, a file, a folder, a workspace package.
+- **Interface** — everything a caller must know to use the module correctly: types, invariants, error modes, ordering, config. *Not* just the type signature.
+- **Implementation** — the body of code inside.
+- **Depth** — leverage at the interface. A module is **deep** when a lot of behaviour sits behind a small interface. **Shallow** = interface nearly as complex as the implementation.
+- **Seam** — where an interface lives; a place where behaviour can be altered without editing in place. (Term from Feathers, *Working Effectively with Legacy Code*.)
+- **Adapter** — a concrete thing that satisfies an interface at a seam.
+- **Leverage** — what callers get from depth. **Locality** — what maintainers get from depth.
 
-**DIP at the boundary.** Use cases in `application` declare traits (ports). `infrastructure` implements them. The composition root (`apps/<name>/main.rs`) injects the concrete impl. Example:
+Do **not** drift into "component", "service", "API", or "boundary". Consistent language is the whole point.
 
-```rust
-// crates/application/src/ports.rs
-#[async_trait]
-pub trait UserRepo {
-    async fn by_id(&self, id: UserId) -> Result<Option<User>, RepoError>;
+## Three load-bearing principles
+
+1. **The deletion test.** Imagine deleting the module. If complexity vanishes, it was a pass-through. If complexity reappears across N callers, the module earned its keep. Use this when deciding whether to extract.
+2. **The interface is the test surface.** Tests cross the same seam callers do. If you find yourself wanting to test *past* the interface, the module is the wrong shape — fix the shape, not the test.
+3. **One adapter means a hypothetical seam. Two adapters means a real seam.** Don't introduce a port unless something actually varies across it (typically production + a test stand-in).
+
+## Project shape — start flat, deepen as you go
+
+A fresh code-et project starts as one workspace, one package:
+
+```
+src/
+  modules/                     One folder per deep module. No fixed taxonomy.
+    <module-name>/
+      index.ts                 The interface. Public exports + types only.
+      <impl>.ts                The implementation. Can be many files.
+      <module-name>.test.ts    Tests cross the same seam callers do.
+  db/                          Drizzle schema + migrations.
+    schema.ts
+    migrations/
+  http/
+    app.ts                     Hono app. Wires modules to routes.
+    routes/<route>.ts          One file per resource. Calls module interfaces.
+  config.ts                    Typed env loading (Zod). Read once at boot.
+  main.ts                      Composition root. Imports concrete adapters,
+                               wires them into modules + routes, starts server.
+web/                           Optional Vite + React frontend (drop if API-only).
+  src/...
+docs/
+  adr/                         Architecture Decision Records. Lazy-created.
+CONTEXT.md                     Domain glossary. Lazy-created.
+```
+
+`src/main.ts` is the **composition root** — the only place that instantiates concrete adapters (DB pool, HTTP clients) and injects them into module factories. No module reaches into another module's implementation; all communication is via interfaces exported from `<module>/index.ts`.
+
+## Dependency categories — how to deepen each kind of module
+
+The category a module's dependencies fall into determines how it's tested across its seam.
+
+| Category | Examples | How to deepen / test |
+|---|---|---|
+| **In-process** | Pure computation, in-memory state. | Always deepenable. Merge shallow helpers; test through the new interface directly. No adapter needed. |
+| **Local-substitutable** | DB (SQLite/Postgres), filesystem. | Deepenable when a local stand-in exists. For DB: run the same Drizzle schema against in-process SQLite for tests. Seam is *internal*; no port at the module's external interface. |
+| **Remote-but-owned** | Your other services across a network. | Define a **port** at the seam. Implement an HTTP/queue adapter for production, an in-memory adapter for tests. The logic sits in one deep module even though it's deployed across a network. |
+| **True external** | Stripe, Twilio, third-party APIs. | Module takes the external dependency as an injected port. Tests provide a mock adapter. |
+
+**One adapter = hypothetical seam. Two adapters = real seam.** Don't introduce a port for a single-adapter case — it's just indirection.
+
+## Crossing seams — DTOs only
+
+Data crossing a module's interface is a plain object (or a Zod-parsed type), never a Drizzle row, ORM entity, or framework type. The HTTP route parses the request with Zod, calls the module interface, serialises the result back out.
+
+```ts
+// src/modules/orders/index.ts — the interface
+import type { OrderId, Money } from "./types";
+export type { OrderId, Money };
+
+export interface Orders {
+  place(input: PlaceOrderInput): Promise<OrderId>;
+  byId(id: OrderId): Promise<Order | null>;
+}
+export type PlaceOrderInput = { customerId: string; lines: OrderLine[] };
+export type Order = { id: OrderId; total: Money; status: OrderStatus };
+
+// src/modules/orders/impl.ts — the implementation (internal)
+export function makeOrders(deps: { db: Database; clock: Clock }): Orders {
+  // ... single deep module. Tests in orders.test.ts go through `Orders`.
 }
 
-// crates/application/src/use_cases/get_user.rs
-pub struct GetUser<R: UserRepo> { repo: R }
+// src/http/routes/orders.ts — adapter at the HTTP seam
+const placeOrderBody = z.object({ customerId: z.string().uuid(), lines: z.array(orderLine) });
+app.post("/orders", async c => {
+  const body = placeOrderBody.parse(await c.req.json());
+  const id = await orders.place(body);
+  return c.json({ id }, 201);
+});
 
-// crates/infrastructure/src/repos/postgres_user_repo.rs
-pub struct PostgresUserRepo { pool: PgPool }
-#[async_trait]
-impl UserRepo for PostgresUserRepo { /* ... */ }
-
-// apps/server/src/main.rs
-let repo = PostgresUserRepo::new(pool);
-let use_case = GetUser::new(repo);
-let app = interface::http::router(use_case);
+// src/main.ts — composition root
+const db = drizzle(new Database(env.DATABASE_URL));
+const orders = makeOrders({ db, clock: systemClock });
+const app = buildHttp({ orders });
 ```
-
-## Frontend — Dioxus everywhere
-
-`crates/interface/src/components/` holds Dioxus components. **One UI codebase, three render targets** via Cargo features:
-
-| Target | Crate feature | App | Build |
-|---|---|---|---|
-| Web (WASM) | `interface/web` | `apps/web` | `dx build --platform web` |
-| Desktop | `interface/desktop` | `apps/desktop` | `dx build --platform desktop` |
-| Mobile | `interface/mobile` | `apps/mobile` | `dx build --platform mobile` |
-| SSR (axum) | `interface/server` | `apps/server` | `cargo run -p server` |
-
-Server-side rendering uses `dioxus-fullstack` mounted into the axum router. Server components live in `interface::http::ssr`; client islands hydrate from `interface::components`.
-
-**Mobile is best-effort.** Dioxus mobile (iOS/Android) is newer than web/desktop. CI tests web + desktop builds on every PR. Mobile builds run locally when xcode/android-ndk are present; opt into CI mobile builds with a separate workflow once the project's mobile surface is stable.
 
 ## Database
 
-### Production: PostgreSQL on GCP Cloud SQL
+### Local + small projects: SQLite
 
-- **Connection.** Use the **Cloud SQL Auth Proxy** + **IAM database authentication** — never raw username/password in env vars. The proxy gives short-lived OAuth tokens; the IAM principal is the workload identity bound to the service account.
-- **Pool sizing.** `sqlx::PgPool` with `max_connections = min(num_cpus × 2, 25)` for typical Cloud SQL `db-custom` tiers. Tune from `pg_stat_activity`.
-- **Migrations.** `sqlx::migrate!("./migrations")` from `apps/server/src/main.rs` at boot, **after** acquiring the IAM token. Forward-only; rollback is an *additional* migration that undoes the previous step. Each migration ships with a `recovery.md` next to the SQL file describing how to manually reverse it if the rollback migration itself is faulty.
-- **Compile-time safety.** All queries use `sqlx::query!` / `query_as!` (compile-time-checked against the live schema via `DATABASE_URL` or against a committed `sqlx-data.json` for offline builds). Raw `sqlx::query` (no macro) is forbidden in production code.
+```ts
+import { drizzle } from "drizzle-orm/bun-sqlite";
+import { Database } from "bun:sqlite";
+const db = drizzle(new Database(env.DATABASE_URL));     // file:./dev.db or :memory:
+```
 
-### Local & small projects: SQLite
+In-memory (`:memory:`) for tests. The same schema and queries run against Postgres in prod — Drizzle abstracts the dialect.
 
-- Same `sqlx` interface; `sqlx::Pool<Sqlite>`. SQLite file path is `DATABASE_URL=sqlite:./dev.db`. In-memory for tests: `DATABASE_URL=sqlite::memory:`.
-- Migrations dir is shared. Write SQL that is portable (`TEXT`, `INTEGER`, `REAL`, `BLOB` types; avoid `SERIAL`, use `INTEGER PRIMARY KEY AUTOINCREMENT` with a Postgres-compatible CTE pattern, or split into per-engine migrations under `migrations/postgres/` and `migrations/sqlite/` — choose one approach, document it).
-- Switching engines is a config change: set `DATABASE_URL`, re-run `cargo sqlx prepare` against the target.
+### Production: Postgres
+
+```ts
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+const pool = new Pool({ connectionString: env.DATABASE_URL });
+const db = drizzle(pool);
+```
+
+- **Migrations.** `drizzle-kit generate` from `db/schema.ts` → `db/migrations/`. Forward-only. Each rollback is its own forward migration. Apply at boot in `main.ts` via `migrate(db, { migrationsFolder })`.
+- **Pool sizing.** Default `max` ≈ `min(num_cpus × 2, 25)` for managed Postgres tiers. Tune from `pg_stat_activity`.
 
 ### Repo placement
 
-`infrastructure/repos/` is the **only** module that imports `sqlx`. Use cases see ports (traits) only. Tests for repos use `#[sqlx::test]` with the appropriate engine.
+Only the module that owns persistence for a concept imports Drizzle. Other modules see the interface (a TypeScript type), not the schema. Tests use an in-memory SQLite Drizzle, exercising the real query layer.
 
-## Secrets baseline
+## Secrets
 
-- **Production:** GCP Secret Manager. Service-account-scoped access via workload identity. Secrets are fetched at boot into a typed `Config` struct in `infrastructure/config/`; never re-fetched on the hot path.
-- **Local:** `.env` file loaded with `dotenvy` only when `cfg!(debug_assertions)`. `.env` is gitignored. `.env.example` ships with placeholder names and no real values.
-- **CI:** Secrets via GitHub Actions encrypted secrets — never echoed in workflow logs. The `code-et-audit.yml` workflow uses `DATABASE_URL=sqlite::memory:` for tests; production secrets stay in deployment workflows.
-- **Never:** secrets in code, in `Cargo.toml`, in `Dioxus.toml`, in `tracing` logs (use `secrecy::Secret<T>` to get redaction in `Debug`).
+- **Production.** Read from env at boot in `src/config.ts`. Validate with Zod; missing/invalid env crashes at start, not at first request.
+- **Local.** `.env` loaded by Bun automatically (`bun --env-file=.env` or `Bun.env`). `.env` is gitignored. `.env.example` ships with placeholder names and no values.
+- **CI.** GitHub Actions encrypted secrets. Tests run with `DATABASE_URL=":memory:"`; production secrets stay in deployment workflows.
+- **Never.** Secrets in source, `package.json`, or logs. Wrap sensitive strings in a `Secret<T>` newtype with a `toString()` that redacts.
 
-## Rust security checklist
+## Security checklist
 
-Run through this list at PR time. The CI gate catches the deterministic items; the human pass (engineering plugin's `code-review` skill) catches the rest.
+Run through this list at PR time. CI catches the deterministic items; reviewers (or the engineering plugin's `code-review` skill) catch the rest.
 
-| # | Check | Tool / How |
+| # | Check | How |
 |---|---|---|
-| 1 | No `unsafe` without justification comment | `grep -r "unsafe " crates/` — every block has a `// SAFETY:` line above it explaining the invariant. `cargo-geiger` for project-wide unsafe count. |
-| 2 | All `serde::Deserialize` of untrusted input has bounded sizes | Code review. `serde_json::from_str` on request bodies has `axum::extract::Json<T>` with `T` bounded by deny-on-overflow types (e.g. `String` in DTOs is wrapped in a `BoundedString<N>`). |
-| 3 | No raw SQL — `query!` / `query_as!` only | `grep -rn "sqlx::query(" crates/infrastructure/` should return nothing. |
-| 4 | No FFI without `extern "C"` audit | Code review; if any FFI exists, document the foreign contract in a `// FFI CONTRACT:` block. |
-| 5 | Secrets wrapped in `secrecy::Secret<T>` | `grep -rn "Secret<" crates/infrastructure/config/`. |
-| 6 | Dependency advisories clean | `cargo audit` (CI). |
-| 7 | License + source bans clean | `cargo deny check` (CI, with `deny.toml`). |
-| 8 | No floating dependencies (every dep pinned to a major or minor) | Visible in `Cargo.toml` review. |
-| 9 | Auth at every interface entry point | `axum` route table review: every route has either a public marker or a middleware that asserts auth. |
-| 10 | Input validation lives in `application` (use case), not `interface` | `interface` parses, `application` validates business rules. Code review. |
+| 1 | All HTTP input parsed with Zod | Grep for `await c.req.json()` not paired with `.parse(`. |
+| 2 | All DB writes go through Drizzle (no raw SQL string-concatenation) | Grep for `db.execute(` with template-literal interpolation. |
+| 3 | Secrets validated at boot, not on the hot path | One Zod schema in `config.ts`. |
+| 4 | No `eval`, no `new Function(...)` on untrusted input | Grep + review. |
+| 5 | Dependency advisories clean | `bun audit` (CI). |
+| 6 | Locked dependencies | `bun.lock` committed; CI does `bun install --frozen-lockfile`. |
+| 7 | Auth at every mutating HTTP route | Hono middleware (`requireAuth`) asserted in route review. |
+| 8 | Input validation lives at the HTTP seam | Modules trust their callers within the process boundary. |
 
-## Where things live — quick reference
+## When to add layers
 
-| Concern | Crate | Module |
-|---|---|---|
-| Entities (`User`, `Order`, …) | `domain` | `entities/` |
-| Value objects (`Email`, `Money`, …) | `domain` | `value_objects/` |
-| Domain errors | `domain` | `errors.rs` |
-| Use cases (`CreateUser`, `GetOrder`, …) | `application` | `use_cases/` |
-| Ports (traits) | `application` | `ports.rs` |
-| Application errors (mapped to HTTP) | `application` | `errors.rs` |
-| Repository implementations | `infrastructure` | `repos/` |
-| HTTP clients (third-party APIs) | `infrastructure` | `http_clients/` |
-| Configuration loading + secrets | `infrastructure` | `config/` |
-| HTTP handlers (axum) | `interface` | `http/handlers/` |
-| Routes + middleware | `interface` | `http/router.rs` |
-| Dioxus components | `interface` | `components/` |
-| Composition root | `apps/<name>/` | `main.rs` |
+The flat `src/modules/<name>/` shape is the default. When a module's interface grows past ~5–7 exports, or when an obvious sub-bounded-context emerges, split the module — same shape, recursively. Resist the urge to introduce framework-style folders (`controllers/`, `services/`, `repositories/`); they pre-commit to seams that may not exist.
 
-## When to deviate
-
-The four-crate split is the default. Add more crates when a clear sub-bounded-context emerges (`crates/billing/{domain,application,…}`). Never add fewer — collapsing `application` into `interface` means losing the test seam at the most valuable boundary.
+The **deletion test** is the decision rule: would removing this folder make complexity vanish (delete it) or reappear across callers (it earns its keep)?
 
 ## See also
 
-- [`docs/anti-slop.md`](anti-slop.md) — the anti-slop framework + 5 categories the CI gate enforces.
-- [`docs/testing.md`](testing.md) — per-layer test matrix (domain unit / application use-case / infrastructure integration / interface e2e).
+- [`anti-slop.md`](anti-slop.md) — 4 elements, 5 categories, hard rules.
+- [`testing.md`](testing.md) — testing through the interface; deep-module test patterns.
+- Ousterhout, *A Philosophy of Software Design* — the source for **deep modules** and the leverage-vs-shallow framing.
+- Feathers, *Working Effectively with Legacy Code* — the source for **seams** as a design primitive.
 - Engineering plugin's `system-design` skill — for ADR / trade-off framing when a major decision is on the table.

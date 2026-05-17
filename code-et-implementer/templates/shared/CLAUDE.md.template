@@ -1,68 +1,61 @@
 # {{name}}
 
-Pure-Rust full-stack project bootstrapped with [code-et](https://github.com/Emerging-Tech-Visma/code-et). Architecture: Clean Architecture (4 crates: `domain`, `application`, `infrastructure`, `interface`). Frontend: Dioxus 0.7+ for web/desktop/mobile. Database: {{db}} (`sqlite` for local, switch via `DATABASE_URL=postgres://…` for Cloud SQL).
+TypeScript project scaffolded with **code-et v5**. Stack: **Bun + Hono + Drizzle**. Architecture: deep modules — small interfaces with a lot of behaviour behind them; no fixed layer taxonomy.
 
 ## Quick start
 
 ```bash
-cp .env.example .env          # set DATABASE_URL
-just db:migrate               # apply migrations
-just run:server               # axum + dioxus-fullstack SSR on :3000
-just run:web                  # dioxus-web (WASM) on :8080
-just run:desktop              # dioxus-desktop window
-just test                     # cargo nextest run --workspace
-just audit                    # local mirror of CI audit
+cp .env.example .env
+bun install
+bun run db:migrate
+bun run dev          # Hono server on :3000
+bun test             # bun test runner
+bun run audit        # local mirror of CI (biome + tsc + bun audit + bun test)
 ```
 
 ## Architecture rules
 
-This project follows the doctrine in code-et's [`docs/architecture.md`](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/architecture.md).
+This project follows the doctrine in code-et's `code-et-implementer/docs/architecture.md` (loaded via `Skill` when working with the plugin installed).
 
-- Imports point inward: `domain` ← `application` ← `infrastructure`/`interface`. The `Cargo.toml` workspace deps enforce this.
-- DTOs cross boundaries; `domain::Entity` and `sqlx::Row` do not.
-- Dioxus components live in `crates/interface/src/components/` and render on web, desktop, and mobile.
-- All SQL goes through `sqlx::query!` (compile-time-checked); raw `sqlx::query` is forbidden in production code.
-- Forward-only migrations under `migrations/`. Each rollback is its own forward migration.
+- One folder per **module** under `src/modules/<name>/`. The `index.ts` *is* the interface — public exports + types only.
+- Apply the **deletion test** before any new extraction. If deleting the module makes complexity vanish, it was a pass-through — fold it back.
+- DTOs cross seams; Drizzle rows and framework types do not.
+- All HTTP input parsed with Zod at the route seam.
+- All DB access through Drizzle — no raw SQL string concatenation.
+- Forward-only migrations under `src/db/migrations/`. Each rollback is its own forward migration.
 
-## Recommended companions
+## Vocabulary — use these terms exactly
 
-- [`knowledge-work-plugins/engineering`](https://claude.com/product/cowork) — provides `code-review`, `tech-debt`, `testing-strategy`, `system-design` skills. CLAUDE.md (the plugin's, not this one) has the delegation map.
-- `rust-analyzer-lsp` — symbol-level precision for `/code:plan` and `/code:fix` (used by code-et).
+- **Module** — anything with an interface and an implementation.
+- **Interface** — everything a caller must know: types, invariants, error modes, ordering.
+- **Seam** — where an interface lives.
+- **Adapter** — a concrete thing that satisfies an interface at a seam.
+- **Depth / Leverage / Locality** — what makes a module worth its keep.
 
-## Deploy & upload rule
-
-**Never** deploy or upload {{name}} via raw shell commands. All paths route through:
-
-- `just deploy <env>` → `scripts/deploy.sh` (audit gate → build → migrate → roll out → smoke).
-- `just upload <kind> <env>` → `scripts/upload.sh` (web/desktop/mobile artifacts → CDN/object store).
-
-If you find yourself typing `gcloud run deploy …`, `docker push …`, or `gsutil cp …` directly, stop — add the missing step to the script instead. The discipline keeps deploys deterministic and reviewable.
+Don't drift into "component", "service", "API", or "boundary". Terminology drawn from Ousterhout's *A Philosophy of Software Design* (deep modules) and Feathers' *Working Effectively with Legacy Code* (seams).
 
 ## CI gate
 
 `.github/workflows/code-et-audit.yml` runs on every PR + push to main:
-1. `cargo fmt --check`
-2. `cargo clippy --workspace --all-targets --all-features -- -D warnings`
-3. `scripts/layer-deps-validator.sh` (defence-in-depth on the layer rule)
-4. `cargo-machete` (unused deps)
-5. `cargo-audit` (security advisories)
-6. `cargo-deny check` (license + bans)
-7. `cargo nextest run --workspace --all-features`
 
-A failing CI is the merge blocker. Local feedback: `just audit`.
+1. `biome check .` — lint + format
+2. `tsc --noEmit` — type safety
+3. `bun audit --audit-level=high` — dependency advisories
+4. `bun test` — unit + integration + http-seam tests
 
-## Code-et workflow
+A failing CI is the merge blocker. Local mirror: `bun run audit`.
+
+## Recommended companions
+
+- `engineering` (community plugin) — provides `code-review`, `tech-debt`, `testing-strategy`, `system-design` skills.
+- `commit-commands` — `/commit`, `/commit-push-pr`, `/clean_gone`.
+
+## code-et workflow
 
 | Task | Command |
 |---|---|
-| Single bug fix | `/code:fix` (scope) → implement → `/commit-push-pr` |
-| Feature | `/code:plan` (idea → PRD → tasks) → `/code:ship` (parallel + audit) → `/code:review` → `/commit-push-pr` |
+| Single bug fix | `/code:fix` → implement → `/commit-push-pr` |
+| Feature | `/code:plan` → `/code:ship` → `/code:review` → `/commit-push-pr` |
 | Add CI to existing repo | `/code:install-ci` |
 
-Each task carries `metadata.layer ∈ {domain, application, infrastructure, interface, chore}` (per-file). Vertical slices may span layers; each *file* belongs to exactly one.
-
-## See also
-
-- [code-et docs/architecture.md](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/architecture.md)
-- [code-et docs/anti-slop.md](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/anti-slop.md)
-- [code-et docs/testing.md](https://github.com/Emerging-Tech-Visma/code-et/blob/main/code-et-implementer/docs/testing.md)
+Each task carries `metadata.module` (free-form module name) — vertical slices typically touch the HTTP seam plus one or two modules.

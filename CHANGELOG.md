@@ -2,6 +2,30 @@
 
 All notable changes to the code-et plugin will be documented in this file.
 
+## [5.0.0] - 2026-05-17
+
+### Changed — TypeScript stack + deep-modules architecture
+
+v5 is a deliberate rewrite. v4.x was Rust + Clean Architecture (4-crate workspace); v5 is TypeScript + deep modules. The six-command surface (`/code:start`, `/code:install-ci`, `/code:fix`, `/code:plan`, `/code:ship`, `/code:review`) is preserved; the underlying doctrine and template are new.
+
+**Stack.** `Bun + Hono + Drizzle + Biome` for the server; optional `Vite + React` for a web frontend. SQLite local + dev, Postgres for prod. Desktop and mobile targets are removed — no TypeScript equivalent of the Dioxus one-tree-three-renderers story matches the "lightweight" goal.
+
+**Architecture.** Replaces the 4-crate Clean Architecture mandate with **deep modules**. Vocabulary — *module / interface / seam / adapter / depth / leverage / locality* — is standard software-engineering terminology from Ousterhout's *A Philosophy of Software Design* (deep modules) and Feathers' *Working Effectively with Legacy Code* (seams). The **deletion test** is now the controlling rule for whether a new module earns its place. Dependency categories (in-process / local-substitutable / remote-but-owned / true-external) replace the per-crate dep table.
+
+**Skill style.** Commands rewritten lean — declarative prose, no procedural ceremony. Slash-command invocation is retained because users invoke these deliberately; the prose underneath now reads like a SKILL.md.
+
+**Hooks dropped.** v4.x carried six hooks (`SubagentStop`/audit, `PreToolUse(TaskCreate)`/regex, `SessionStart`/PRD-detect, `TaskCompleted`, `PreCompact`/PRD-resume, plus permission-approve). v5 keeps only the read-only-tool auto-approve hook. The model handles task metadata, PRD resume, and post-subagent verification through skill prose instead — trust-the-model.
+
+**Tag schema.** `metadata.layer` (`domain|application|infrastructure|interface|chore`, regex-enforced) is replaced by `metadata.module` (free-form lowercase, matches `src/modules/<name>/`). No taxonomy enforcement; the model picks a sensible module name and the reviewer catches drift.
+
+**CI gate.** `cargo fmt / clippy / machete / audit / deny / nextest + layer-deps-validator` is replaced by `biome check / tsc --noEmit / bun audit / bun test`. Four stages, all run by Bun without external action installs beyond `oven-sh/setup-bun@v2`.
+
+**Template.** `templates/rust/dioxus-fullstack/` (4 crates, 4 apps, ~50 files including a `Cargo.lock`) is replaced by `templates/typescript/` (~12 files: `package.json`, `tsconfig`, `biome.json`, `drizzle.config.ts`, an example `greetings` module + HTTP route + tests, and a composition-root `main.ts`).
+
+**Migration.** v4's final state is commit `c5bad00` on `main`; pin or branch from there for existing Rust projects. v5 only scaffolds new TS projects; there is no automatic v4→v5 codebase migration.
+
+Files touched: every command + doctrine doc rewritten; full template tree replaced; plugin.json, marketplace.json, CLAUDE.md, README.md, hooks.json, settings.json, CHANGELOG.
+
 ## [4.3.1] - 2026-05-17
 
 ### Fixed — `/code:plan` → `/code:ship` handoff: schema trap, silent rejection, stale-task pollution
@@ -12,7 +36,7 @@ A live `/code:plan` session emitted `metadata.user_story = "US-1 | AC-1.1, AC-1.
 
 **Bug 2 — no recovery from hook rejection (`commands/plan.md` §"On TaskCreate rejection").** Phase 3 had no instruction for handling exit-2 from the hook. The orchestrator narrated forward (`"Now wiring task dependencies…"`) on phantom task ids and `TaskUpdate(addBlockedBy)` did nothing visible. Fix: explicit guidance — read `${TMPDIR}/code-et-task-hook/last-rejected.json`, identify the bad field, re-issue the same TaskCreate with corrected metadata, do not call `TaskUpdate` on phantom ids. Three retries on the same field escalates to the user (structural PRD misread, not a typo).
 
-**Bug 3 — silent empty queue in `/code:ship` + cross-branch stale-task pollution (`commands/ship.md` §"Pre-dispatch").** `TaskList` is project-global, not branch-scoped — pending tasks from a merged PRD persist as `pending` on every subsequent branch (the live session showed #33–#37 from `visma-agentic-platform-shell` still pending after that PR's merge in `4f98ac3`). `/code:ship` was dispatching whatever TaskList returned, with no awareness that those tasks belonged to a different PRD; conversely, when *no* tasks tied to the current PRD existed, it exited with "no queue" instead of diagnosing the gap. Fix: resolve the active PRD, parse its `## Story Checklist` for US tags, and scope the dispatch queue to tasks whose `metadata.user_story` matches one of those US/AC tags **or** starts with `chore:` (chores during a feature are this-branch work via `/code:fix`, never stale). The empty-queue branch now distinguishes three cases (PRD exists / no tasks tied; PRD exists / tasks belong to a different PRD; no PRD / no tasks) and emits a specific next-step message for each. Stale tasks from prior branches are left untouched — they belong to their owning branch, not this one.
+**Bug 3 — silent empty queue in `/code:ship` + cross-branch stale-task pollution (`commands/ship.md` §"Pre-dispatch").** `TaskList` is project-global, not branch-scoped — pending tasks from a merged PRD persist as `pending` on every subsequent branch (the live session showed #33–#37 from a prior feature branch still pending after that PR's merge in `4f98ac3`). `/code:ship` was dispatching whatever TaskList returned, with no awareness that those tasks belonged to a different PRD; conversely, when *no* tasks tied to the current PRD existed, it exited with "no queue" instead of diagnosing the gap. Fix: resolve the active PRD, parse its `## Story Checklist` for US tags, and scope the dispatch queue to tasks whose `metadata.user_story` matches one of those US/AC tags **or** starts with `chore:` (chores during a feature are this-branch work via `/code:fix`, never stale). The empty-queue branch now distinguishes three cases (PRD exists / no tasks tied; PRD exists / tasks belong to a different PRD; no PRD / no tasks) and emits a specific next-step message for each. Stale tasks from prior branches are left untouched — they belong to their owning branch, not this one.
 
 **Known follow-up.** This release prevents *dispatch* of stale tasks but does not *clear* them — #33–#37 will keep appearing on every `/code:ship` until manually `TaskUpdate`'d to completed. A v4.3.2 task-completion-on-PR-merge hook is the proper fix; until then, run `TaskUpdate(id, status: completed)` on any task whose owning PR has merged.
 
@@ -268,7 +292,7 @@ PRD files under `plans/YYYY-MM-DD-<slug>.md` continue to work with `/code:plan` 
 
 ### Changed — `/code:go` portability
 
-- **`/code:go` no longer hardcodes Visma-specific app names.** Step 2 ("Which app(s)") and the Step 4 Task Brief template now reference the dynamic `Apps Overview` from `FILE-REFERENCE.md` instead of `CMS / Content Studio / Course Studio / Survey Studio`. The plugin is general-purpose and used across multiple repos; the hardcoded list contradicted Step 0's dynamic-discovery design.
+- **`/code:go` no longer hardcodes project-specific app names.** Step 2 ("Which app(s)") and the Step 4 Task Brief template now reference the dynamic `Apps Overview` from `FILE-REFERENCE.md` instead of a hardcoded list. The plugin is general-purpose and used across multiple repos; the hardcoded list contradicted Step 0's dynamic-discovery design.
 - **Removed `feature` from the Task Brief Type list.** The scope guard at the top of `/code:go` already routes multi-slice features to `/code:prd → /code:plan-issue → /code:implement`, but the output template still listed `feature` as a valid type, contradicting the guard. Type list is now `[bug fix / styling / refactor / API change]`.
 - **Synced `marketplace.json` version** with `plugin.json` (was stale at 3.7.4).
 
@@ -647,7 +671,7 @@ PRD files under `plans/YYYY-MM-DD-<slug>.md` continue to work with `/code:plan` 
 
 ### Added
 
-- Document `@ref` version-pinning syntax in README install section — users can now pin to a specific version with `/plugin marketplace add Emerging-Tech-Visma/code-et@v1.18.4`
+- Document `@ref` version-pinning syntax in README install section — users can now pin to a specific version with `/plugin marketplace add <owner>/code-et@v1.18.4`
 
 ## [1.18.3] - 2026-03-07
 

@@ -1,19 +1,20 @@
 {
   "name": "code",
-  "version": "4.3.1",
-  "description": "Pure-Rust Clean Architecture workflow. Six commands: start, fix, plan, ship, review, install-ci. Always-latest deps, CI audit gate, anti-slop enforced.",
+  "version": "5.0.0",
+  "description": "Lightweight TypeScript workflow built on deep modules. Six commands: start, fix, plan, ship, review, install-ci. Stack: Bun + Hono + Drizzle + Biome. Deep-modules vocabulary from Ousterhout and Feathers.",
   "author": {
-    "name": "Kennet Kusk"
+    "name": "code-et"
   },
   "license": "MIT",
   "keywords": [
     "coding",
     "workflow",
-    "rust",
-    "clean-architecture",
-    "dioxus",
-    "axum",
-    "sqlx",
+    "typescript",
+    "deep-modules",
+    "bun",
+    "hono",
+    "drizzle",
+    "biome",
     "anti-slop",
     "task-driven",
     "agents",
