@@ -15,17 +15,28 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "style": { "noNonNullAssertion": "warn", "useImportType": "error" },
+      "style": {
+        "noNonNullAssertion": "warn",
+        "useImportType": "error",
+        "useConst": "error",
+        "useTemplate": "error"
+      },
       "suspicious": {
         "noExplicitAny": "warn",
-        "noConsole": { "level": "warn", "options": { "allow": ["error", "warn", "info"] } }
+        "noConsole": { "level": "warn", "options": { "allow": ["error", "warn", "info"] } },
+        "noImplicitAnyLet": "error"
       },
       "correctness": {
         "useExhaustiveDependencies": "warn",
         "noUnusedImports": "error",
-        "noUnusedVariables": "error"
+        "noUnusedVariables": "error",
+        "noUnusedFunctionParameters": "warn"
       },
-      "complexity": { "noUselessConstructor": "error" }
+      "complexity": {
+        "noUselessConstructor": "error",
+        "noUselessLoneBlockStatements": "error",
+        "noUselessTypeConstraint": "error"
+      }
     }
   }
 }

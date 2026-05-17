@@ -35,15 +35,15 @@ jobs:
       - name: generate drizzle migrations
         run: bun run db:generate || echo "no schema changes"
 
-      - name: lint
+      - name: lint (biome)
         run: bunx biome check .
 
-      - name: typecheck
+      - name: typecheck (tsc)
         run: bunx tsc --noEmit
 
-      - name: dependency audit
+      - name: dependency audit (bun audit)
         run: bun audit --audit-level=high
         continue-on-error: false
 
-      - name: test
+      - name: test (bun test)
         run: bun test

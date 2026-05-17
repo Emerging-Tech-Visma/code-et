@@ -52,15 +52,34 @@ When CI is green but something still feels wrong, look for these. The engineerin
 | **Mirror Tests** | Tests replay the implementation. `expect(add(2, 3)).toBe(2 + 3)`. The test asserts what the implementation will compute, not what callers expect. | Tests assert observable behaviour through the public interface. A test that passes for two different correct implementations is a real test. |
 | **Inconsistent Styling** | Mixed quote styles, mixed `===` / `==`, naming drift (`userId` here, `user_id` there), comments restating the obvious. | `biome check --apply`. Project-wide naming enforced in review. |
 
+## Lint stack — Biome only
+
+code-et uses **[Biome](https://biomejs.dev)** for both linting *and* formatting. One binary, one config (`biome.json`), one mental model. There is no ESLint, no Prettier, no separate import sorter, and (this is the v4-to-v5 change) no Rust toolchain anywhere.
+
+What the bundled `biome.json` turns on beyond Biome's `recommended` set:
+
+- `style.useImportType` (error) — `import type` for type-only imports; keeps the runtime bundle honest.
+- `style.useConst` / `style.useTemplate` (error) — defaults that prevent drift.
+- `suspicious.noExplicitAny` (warn), `suspicious.noImplicitAnyLet` (error), `suspicious.noConsole` (warn — allow `error/warn/info`).
+- `correctness.noUnusedImports` / `noUnusedVariables` (error), `noUnusedFunctionParameters` (warn) — dead-code detection at the file scope.
+- `complexity.noUselessConstructor` / `noUselessLoneBlockStatements` / `noUselessTypeConstraint` (error) — ratchet against shallow-extraction slop.
+
+Local commands:
+
+- `bun run lint` — `biome check .` (read-only, fails on findings)
+- `bun run lint:fix` — `biome check --write .` (safe auto-fixes applied in place)
+
+The lint stage is the **first** step of the CI audit; if Biome is unhappy, the rest of the pipeline doesn't run.
+
 ## The 4-stage verification loop — what CI runs
 
 The `.github/workflows/code-et-audit.yml` shipped by `/code:start` and `/code:install-ci` runs these stages on every PR. The same pipeline runs locally via `bun run audit` and as the tail step of `/code:ship`.
 
 | Stage | What | Tool |
 |---|---|---|
-| 1 — Static validation | Format, lint, dead exports | `biome check .` |
+| 1 — Lint + format | Style, dead exports, complexity ratchets | `biome check .` |
 | 2 — Type safety | TypeScript checks across the workspace | `tsc --noEmit` |
-| 3 — Dependency audit | Vulnerable + unused deps | `bun audit`. Optional: `npx knip` for unused exports/files. |
+| 3 — Dependency audit | Vulnerable deps (high+critical block) | `bun audit --audit-level=high` |
 | 4 — Tests | Unit + integration | `bun test` |
 
 A finding is **CRITICAL** if it falls into one of:

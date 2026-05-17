@@ -35,13 +35,16 @@ The audit runs `biome check`, `tsc --noEmit`, `bun audit`, `bun test`. See [`doc
    Bash('mkdir -p .github/workflows && cp "${CLAUDE_PLUGIN_ROOT}/templates/shared/.github/workflows/code-et-audit.yml" .github/workflows/')
    ```
 
-4. **Add an `audit` npm script** if `package.json` doesn't have one. Read `package.json`, add to `scripts`:
+4. **Add `lint`, `lint:fix`, `typecheck`, and `audit` scripts** to `package.json` if any are missing. The four scripts are independent enough that users want to run them in isolation while debugging; `audit` chains all four for the merge gate.
 
    ```json
+   "lint": "biome check .",
+   "lint:fix": "biome check --write .",
+   "typecheck": "tsc --noEmit",
    "audit": "biome check . && tsc --noEmit && bun audit --audit-level=high && bun test"
    ```
 
-   Skip if the project already defines `audit` differently — print a note instead.
+   If a project already defines any of these differently, leave that entry alone and print a note. Do not overwrite — the user may have wired their own tooling.
 
 5. **Recommend doctrine adoption.** Print:
 
@@ -50,11 +53,13 @@ The audit runs `biome check`, `tsc --noEmit`, `bun audit`, `bun test`. See [`doc
    See ${CLAUDE_PLUGIN_ROOT}/docs/architecture.md for the vocabulary.
    ```
 
-6. **Recommend dev-dep installs** if missing:
+6. **Recommend dev-dep installs** if missing. **Biome is the lint stack** — one binary covers lint + format + import-sort.
 
    ```
    bun add -d @biomejs/biome typescript
    ```
+
+   If the project currently uses ESLint or Prettier, mention that Biome replaces both and ask before removing them.
 
 ## Output
 
