@@ -1,6 +1,6 @@
-# code-et v4.x
+# code-et v5.x
 
-Pure-Rust Clean Architecture workflow. Stack: `axum + sqlx + Dioxus 0.7+ + tokio`. One frontend codebase renders to web, desktop, and mobile.
+Lightweight TypeScript workflow built on **deep modules**. Stack: `Bun + Hono + Drizzle + Biome`. Architecture vocabulary — *module / interface / seam / adapter / depth / leverage / locality* — is standard software-engineering terminology drawn from Ousterhout's *A Philosophy of Software Design* and Feathers' *Working Effectively with Legacy Code*.
 
 ## Git Rules
 
@@ -18,15 +18,32 @@ Pure-Rust Clean Architecture workflow. Stack: `axum + sqlx + Dioxus 0.7+ + tokio
 | Feature, end-to-end | `/code:plan` (idea → PRD → tasks) → `/code:ship` (parallel agents + audit) |
 | Pre-merge gate | `/code:review` (audit + diff review) |
 
-For commits and PRs use `commit-commands` plugin (`/commit`, `/commit-push-pr`).
+For commits and PRs use the `commit-commands` plugin (`/commit`, `/commit-push-pr`).
 
 ## Workflow — two lanes
 
-**Bug lane.** `/code:fix` produces a Task Brief and stops. Most bugs are 1-3 file edits — no orchestration needed. If the work spans multiple coherent vertical slices (UI ↔ logic ↔ API ↔ DB), it's a feature in disguise — write a PRD instead.
+**Bug lane.** `/code:fix` produces a Task Brief and stops. Most bugs are 1–3 file edits — no orchestration needed. If the work spans multiple coherent vertical slices (HTTP seam + module + DB for a real feature), it's a feature in disguise — write a PRD instead.
 
-**Feature lane.** `/code:plan` (one extended turn: refined brief → PRD on disk → vertical-slice tasks) → `/code:ship` (parallel worktree agents + post-merge audit + 1 auto-retry on CRITICAL/HIGH) → `/code:review` (pre-merge gate) → `/commit-push-pr`.
+**Feature lane.** `/code:plan` (refined brief → PRD on disk → vertical-slice tasks) → `/code:ship` (parallel worktree agents + audit + 1 auto-retry on CRITICAL/HIGH) → `/code:review` (pre-merge gate) → `/commit-push-pr`.
 
-Each task is a **vertical slice**: UI ↔ logic ↔ API ↔ DB, end-to-end testable. When a slice supersedes existing code, deletion of the old code is part of the same commit — no parallel utilities, no `// TODO: remove old X`.
+Each task is a **vertical slice**: HTTP route → module → DB (or whatever path the slice actually traverses), end-to-end testable. When a slice supersedes existing code, deletion of the old code is part of the same commit — no parallel utilities, no `// TODO: remove old X`.
+
+## Vocabulary — use these terms exactly
+
+- **Module** — anything with an interface and an implementation. Function, file, folder, package.
+- **Interface** — everything a caller must know: types, invariants, error modes, ordering. Not just the type signature.
+- **Implementation** — the body of code inside.
+- **Depth** — leverage at the interface; a lot of behaviour behind a small interface.
+- **Seam** — where an interface lives.
+- **Adapter** — a concrete thing satisfying an interface at a seam.
+
+**Three principles:**
+
+1. **Deletion test.** Imagine deleting the module. If complexity vanishes, it was a pass-through. If complexity reappears across callers, the module earned its keep.
+2. **Interface is the test surface.** Tests cross the same seam callers do.
+3. **One adapter = hypothetical seam. Two adapters = real seam.**
+
+Don't drift into "component", "service", "API", or "boundary".
 
 ## Task Metadata Convention
 
@@ -34,68 +51,69 @@ Tasks created with `TaskCreate` carry:
 
 ```
 metadata: {
-  verification: "cargo nextest run && cargo clippy --all-targets -- -D warnings",
+  verification: "bun test && bun run typecheck",
   files: [
-    {"path": "crates/<layer>/src/path/to/file.rs", "symbol": "Type::method", "line": 42, "op": "modify"},
-    {"path": "crates/<layer>/src/new.rs", "symbol": "NewType", "op": "add"},
-    {"path": "crates/<layer>/src/legacy.rs", "symbol": "old_fn", "line": 89, "op": "delete"}
+    {"path": "src/modules/<m>/index.ts", "symbol": "Orders.place", "line": 42, "op": "modify"},
+    {"path": "src/http/routes/orders.ts", "symbol": "placeOrder", "op": "add"},
+    {"path": "src/modules/<m>/legacy.ts", "symbol": "oldPlace", "line": 89, "op": "delete"}
   ],
   expected_outcome: "what success looks like",
-  rationale: "why this task exists — the constraint or decision driving it",
+  rationale: "why this slice exists — the constraint driving it",
   user_story: "US-N" | "AC-N.M" | "chore:<reason>",
-  layer: "domain" | "application" | "infrastructure" | "interface" | "chore"
+  module: "orders"
 }
 ```
 
-`files[]` entries: `path` + `op` always required; `symbol` required for `modify|replace|delete`; `line` is an LSP-resolved hint (drift-tolerant — `symbol` is the contract). Full schema and validation rules in `commands/plan.md` §"TaskCreate metadata".
+`files[]` entries: `path` + `op` always required; `symbol` required for `modify|replace|delete`; `line` is a drift-tolerant hint — `symbol` is the contract. Full schema in `commands/plan.md` §"TaskCreate metadata".
 
-`rationale` is mandatory. Subagents in `/code:ship` start cold — they need the *why*, not just the *what*, to make judgment calls.
+`rationale` is mandatory — implementer subagents in `/code:ship` start cold.
 
-`layer` is mandatory. Each *file* declares its layer; vertical slices may span layers.
+`module` is free-form lowercase (`orders`, `payments`, `auth`, `chore`) — no enforced taxonomy. Matches the folder name in `src/modules/`.
 
 ## Model Assignments
-
-Different roles in the workflow run on different models. The `Agent` tool's `model` param accepts `opus` | `sonnet` | `haiku` — each resolves to the latest of that family.
 
 | Role | Model | Where |
 |---|---|---|
 | Orchestrator (`/code:plan`, `/code:ship`) | `opus` (4.7) | Inherited; multi-step coordination + judgment. |
 | Per-task implementer | `sonnet` (4.6) | `/code:ship` — routine vertical-slice coding from a complete brief. |
-| Per-task reviewer | `opus` (4.7) | `/code:ship` — diff review via engineering plugin's `code-review` skill (falls back to inline 5-area checklist if the plugin isn't installed). Bugs the reviewer misses fail silently; the 8-pt SWE-bench gap matters here. |
-| Per-task review fix-pass | `opus` (4.7) | `/code:ship` — applies reviewer findings; same model as reviewer for consistent judgment across find/fix. |
-| Post-merge audit fix-pass | `opus` (4.7) | `/code:ship` — judgment on layer slips, dep advisories, test failures. |
+| Per-task reviewer | `opus` (4.7) | `/code:ship` — diff review via engineering plugin's `code-review` (falls back to inline 5-area checklist). Bugs the reviewer misses fail silently. |
+| Per-task review fix-pass | `opus` (4.7) | `/code:ship` — applies reviewer findings; same model for find/fix consistency. |
+| Audit fix-pass | `opus` (4.7) | `/code:ship` — judgment on type errors, dep advisories, test failures. |
 | Explore (breadth searches) | `haiku` (4.5) | `/code:plan`, `/code:fix` — cheap parallel discovery. |
 
-The principle: heavy lifting (planning, judgment, review) on Opus; routine coding from a complete brief on Sonnet; breadth gathering on Haiku.
+Heavy lifting (planning, judgment, review) on Opus; routine coding from a complete brief on Sonnet; breadth gathering on Haiku.
 
 ## Code Standards
 
-- Rust 2024 edition; `cargo clippy --all-targets -- -D warnings`; `cargo fmt --check`.
-- Max 600 lines per file.
-- Compose at app boundaries (`apps/<name>/main.rs`); never instantiate `infrastructure` inside `interface` — pass via constructor or DI trait.
-- All SQL through `sqlx::query!` / `query_as!` (compile-time-checked). Raw `sqlx::query` is forbidden in production code.
-- Forward-only migrations under `migrations/`. Each rollback is its own forward migration.
+- TypeScript strict (`strict: true`, `noUncheckedIndexedAccess: true`).
+- `biome check .` clean, `tsc --noEmit` clean.
+- Max ~400 lines per file (soft guidance — split when adding behaviour, not by line count alone).
+- Compose at `src/main.ts` (the composition root); no module instantiates another module's concrete implementation.
+- All HTTP input parsed with Zod at the route seam. Modules trust their callers within the process boundary.
+- All DB access through Drizzle — no raw SQL string-concatenation.
+- Forward-only migrations under `src/db/migrations/`. Each rollback is its own forward migration.
 
-## Clean Architecture — controlling rules
+## Deep Modules — controlling rules
 
-Apply Clean Architecture per [`docs/architecture.md`](docs/architecture.md). Each new or modified file declares its layer (`domain` | `application` | `infrastructure` | `interface` | `chore`) in `metadata.layer`. Imports point inward; the workspace `Cargo.toml` deps already enforce this — violating imports fail at `cargo build`.
+Apply the doctrine in [`docs/architecture.md`](docs/architecture.md). Each new or modified file belongs to a named module (`metadata.module` in tasks). Modules grow organically; no fixed taxonomy.
 
-UI: Dioxus 0.7+ for web, desktop, and mobile from one component tree. DB: Postgres on GCP Cloud SQL for prod, SQLite for local. `sqlx` with `query!` (compile-time-checked); never raw SQL. Forward-only migrations.
+UI: optional Vite + React frontend in `web/`. Drop it if API-only.
+DB: SQLite for local + dev, Postgres for prod. Same Drizzle schema; the migrator emits dialect-aware SQL.
 
-Delegation map for human-judgment passes (engineering plugin: `knowledge-work-plugins/engineering`):
+**Delegation map for human-judgment passes** (engineering plugin: `knowledge-work-plugins/engineering`):
 - security / code review → `code-review` skill
 - testing strategy → `testing-strategy` skill
 - tech-debt triage → `tech-debt` skill
-- ADR / system design → `system-design` skill or `/architecture`
-- LSP precision → `rust-analyzer-lsp` companion plugin
+- ADR / system design → `system-design` skill
+- architecture refactors → engineering plugin's `improve-codebase-architecture` skill (if installed)
 
-Anti-slop hard rules: see [`docs/anti-slop.md`](docs/anti-slop.md). Rule of Three. No mirror tests. No defensive validation at trusted boundaries.
+**Anti-slop hard rules:** see [`docs/anti-slop.md`](docs/anti-slop.md). Deletion test before extraction. Rule of Three. No mirror tests. No defensive validation at trusted seams.
 
 ## Brevity
 
 Drop filler ("just", "simply", "really"), hedging ("perhaps", "maybe"), pleasantries ("Sure!", "Happy to help"). Fragments over sentences when meaning is clear. Pattern: `[thing] [action] [reason]. [next].`
 
-Task subjects: `<verb> <object>` ≤50 chars. ✗ "I will implement the auth middleware". ✓ "add auth middleware in interface/http/middleware.rs".
+Task subjects: `<verb> <object>` ≤50 chars. ✗ "I will implement the auth middleware". ✓ "add auth middleware in src/http/routes/auth.ts".
 
 Never compress: code, file paths, URLs, error messages, security warnings.
 
@@ -103,19 +121,11 @@ Never compress: code, file paths, URLs, error messages, security warnings.
 
 Token waste = worse plans + worse code.
 
-1. **Trim attachments.** Quote back only the slice you act on. Ignore siblings the harness attached. Duplicate blocks count once.
+1. **Trim attachments.** Quote back only the slice you act on. Duplicate blocks count once.
 2. **Read in slices.** Files >200 lines: Grep first, then `Read(offset, limit)` for a window. Re-reading the same file twice = first read should have been a slice.
-3. **Delegate breadth.** 3+ independent areas, or fix in an unknown file → `Agent(subagent_type: "Explore")`. Parallel queries → one message, multiple Agent calls. Don't delegate AND search. Specify thoroughness: `quick` | `medium` | `very thorough`.
+3. **Delegate breadth.** 3+ independent areas → `Agent(subagent_type: "Explore", model: "haiku")`. Parallel queries → one message, multiple Agent calls.
 4. **Stop at sufficient.** `file:line` + rationale per task is enough. 5 sharp tasks > 15 vague ones.
-
-## FILE-REFERENCE.md Lifecycle
-
-`FILE-REFERENCE.md` is updated **only after a PR merges to main** that touched structural files: `crates/*/Cargo.toml`, `apps/*/Cargo.toml`, root `Cargo.toml`, `migrations/*`, or new top-level apps/crates. Workflow:
-
-1. All changes start on a branch (`feature/`, `fix/`, `chore/`) and ship via PR.
-2. After merging the PR to main, if the diff touched structural files, run `/code:fix update` to refresh `FILE-REFERENCE.md`. Commit the refresh on a follow-up branch + PR.
-3. On a feature branch, do **not** edit `FILE-REFERENCE.md` — it tracks merged-to-main reality, not in-flight work.
 
 ## Always-latest dependencies
 
-`/code:start` runs `cargo update` post-scaffold so every dep is at its latest semver-compatible patch. Major bumps (e.g., dioxus 0.7→0.8 once it ships) need a manual `cargo upgrade` (cargo-edit) and a `just audit` smoke. The CI gate's `cargo audit` step catches yanked or vulnerable pins on every PR.
+The template's `package.json` pins to caret (`^4.6.0`) so patches and compatible minors flow through `bun install`. Major bumps need a manual `bun update` plus a `bun run audit` smoke. The CI gate's `bun audit` step catches yanked or vulnerable pins on every PR.

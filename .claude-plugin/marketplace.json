@@ -1,17 +1,17 @@
 {
   "name": "code-et",
   "owner": {
-    "name": "Kennet Kusk"
+    "name": "code-et"
   },
   "metadata": {
-    "description": "Pure-Rust Clean Architecture workflow. Six commands (start, fix, plan, ship, review, install-ci) for axum + sqlx + Dioxus 0.7+ + tokio. Always-latest deps, CI audit gate, anti-slop enforced.",
-    "version": "4.3.1"
+    "description": "Lightweight TypeScript workflow built on deep modules. Six commands (start, fix, plan, ship, review, install-ci) for Bun + Hono + Drizzle + Biome. CI audit gate; deep-modules vocabulary from Ousterhout and Feathers.",
+    "version": "5.0.0"
   },
   "plugins": [
     {
       "name": "code",
       "source": "./code-et-implementer",
-      "description": "Pure-Rust Clean Architecture workflow. /code:start scaffolds axum+sqlx+Dioxus, /code:plan synthesises PRD + tasks, /code:ship runs parallel agents and audits, /code:review is the pre-merge gate."
+      "description": "Lightweight TypeScript workflow. /code:start scaffolds Bun+Hono+Drizzle around deep modules; /code:plan synthesises PRD + vertical-slice tasks; /code:ship runs parallel worktree agents + audit; /code:review is the pre-merge gate."
     }
   ]
 }

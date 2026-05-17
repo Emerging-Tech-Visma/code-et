@@ -11,66 +11,6 @@
           }
         ]
       }
-    ],
-    "SubagentStop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/verify-gate.sh",
-            "timeout": 30000
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/session-start-prd.sh",
-            "timeout": 3000
-          }
-        ]
-      }
-    ],
-    "PreToolUse": [
-      {
-        "matcher": "TaskCreate",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task-created-tag-check.sh",
-            "timeout": 3000
-          }
-        ]
-      }
-    ],
-    "TaskCompleted": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/task-complete.sh",
-            "timeout": 5000
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/pre-compact-prd.sh",
-            "timeout": 3000
-          }
-        ]
-      }
     ]
   }
 }
