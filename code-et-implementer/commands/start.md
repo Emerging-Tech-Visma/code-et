@@ -33,10 +33,10 @@ If the project name is missing, one focused `AskUserQuestion` to collect it.
 
 ## Procedure
 
-1. **Pre-flight.** Refuse if CWD already has `package.json` or `Cargo.toml` without `--force`. Refuse if `pwd` contains `code-et-implementer` — never scaffold inside the plugin repo.
+1. **Pre-flight.** Refuse if CWD already has `package.json` without `--force`. Refuse if `pwd` contains `code-et-implementer` — never scaffold inside the plugin repo.
 
    ```
-   Bash('test -f package.json || test -f Cargo.toml && echo CONFLICT || true')
+   Bash('test -f package.json && echo CONFLICT || true')
    ```
 
 2. **Copy template.**
