@@ -65,16 +65,25 @@ Doctrine lives in [`code-et-implementer/docs/`](code-et-implementer/docs/):
 - [`anti-slop.md`](code-et-implementer/docs/anti-slop.md) — 4 elements, 5 categories, 8 hard rules.
 - [`testing.md`](code-et-implementer/docs/testing.md) — interface-as-test-surface, deep-module test patterns, mirror-test ban.
 
-## CI gate
+## Lint + audit gate
+
+**Biome is the lint stack** — one binary covers lint + format + import-sort. No ESLint, no Prettier, no separate import sorter. The bundled `biome.json` enables Biome's `recommended` set plus targeted rules against shallow-extraction slop (`useConst`, `useTemplate`, `noImplicitAnyLet`, `noUnusedFunctionParameters`, `noUselessLoneBlockStatements`, `noUselessTypeConstraint`).
+
+Local commands:
+
+- `bun run lint` — `biome check .` (read-only; exits non-zero on findings)
+- `bun run lint:fix` — `biome check --write .` (safe auto-fixes in place)
+- `bun run typecheck` — `tsc --noEmit`
+- `bun run audit` — runs all four stages below in series
 
 `.github/workflows/code-et-audit.yml` runs on every PR + push to main:
 
-1. `biome check .` — lint + format
-2. `tsc --noEmit` — type safety
-3. `bun audit` — dependency advisories
-4. `bun test` — unit + integration + http-seam tests
+1. **lint (biome)** — `biome check .`
+2. **typecheck (tsc)** — `tsc --noEmit`
+3. **dependency audit (bun audit)** — `bun audit --audit-level=high` (high + critical block; dev-only moderate advisories don't)
+4. **test (bun test)** — `bun test`
 
-Local mirror: `bun run audit`. `/code:ship` runs the same pipeline with a 1-pass auto-fix retry on CRITICAL/HIGH findings. **A green audit is the merge gate** — no manual override.
+`/code:ship` runs the same pipeline with a 1-pass auto-fix retry on CRITICAL/HIGH findings. **A green audit is the merge gate** — no manual override.
 
 > **GitHub Actions:** uses `actions/checkout`, `oven-sh/setup-bun`, `actions/cache`. All public; GitHub fetches them automatically. `secrets.GITHUB_TOKEN` is auto-provided.
 
