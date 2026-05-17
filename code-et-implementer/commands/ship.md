@@ -8,81 +8,80 @@ effort: xhigh
 
 # Ship — Execute + Audit
 
-Loads pending tasks from `TaskList` (or `.claude/${CLAUDE_CODE_TASK_LIST_ID}.json`), dispatches them as parallel worktree-isolated subagents, then runs the local audit gate. On CRITICAL or HIGH findings, dispatches one fix-pass subagent and re-audits. After 1 retry the chain halts and surfaces findings.
+Loads pending tasks from `TaskList`, dispatches them as parallel worktree-isolated subagents, then runs the local audit gate. On CRITICAL or HIGH findings, dispatches one fix-pass and re-audits. After 1 retry the chain halts and surfaces findings.
 
 If the current branch is `main` or `master`, create `feature/<slug-from-prd-or-tasks>` first.
 
-## Pre-dispatch: scope the queue to this branch's PRD
+## Pre-dispatch — scope the queue to this branch's PRD
 
-`TaskList` is global across the project, not branch-scoped — pending tasks from prior PRDs leak into a fresh branch and would otherwise re-execute against stale spec. Before dispatching, scope the queue:
+`TaskList` is global across the project, not branch-scoped — pending tasks from prior PRDs leak in and would otherwise re-execute against stale spec.
 
-1. Resolve the active PRD:
-   ```
-   Bash('"${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh"')
-   ```
-   Exit 1 = no PRD for this branch → bug lane: ship whatever pending tasks exist (their tags should be `chore:*` from `/code:fix`). Otherwise capture the path.
-2. Parse the PRD's `## Story Checklist` to enumerate the US tags that belong to it (`US-1`, `US-2`, …). A pending task belongs to this branch iff one of:
+1. **Find the active PRD.** Glob `plans/*.md` whose filename slug matches the current branch's slug (after the `feature/`/`fix/`/`chore/` prefix). If exactly one match: that's the PRD. Multiple matches: pick the most recent date. Zero matches: bug lane → ship whatever pending tasks exist (their tags should be `chore:*`).
+2. **Parse the PRD's `## Story Checklist`** to enumerate US tags (`US-1`, `US-2`, …). A pending task belongs to this branch iff one of:
    - `metadata.user_story` matches a `US-<N>` in the set, or
    - `metadata.user_story` is `AC-<N>.<M>` whose `<N>` is in the set, or
-   - `metadata.user_story` starts with `chore:` (chores during a feature are this-branch work — `/code:fix` runs against the current tree, not the previous PRD).
+   - `metadata.user_story` starts with `chore:`.
 
-   All other pending tasks are stale-from-another-branch and **must be skipped** — do not dispatch them, do not mark them completed; leave them for their owning branch.
+   All other pending tasks are stale-from-another-branch — **skip** them; don't dispatch, don't mark completed; leave them for their owning branch.
 3. Build the dispatch queue from the scoped subset only.
 
-**Empty-queue diagnostics — never exit silently.** If after scoping the queue is empty, the situation is one of three, each with a distinct message:
+**Empty-queue diagnostics — never exit silently.**
 
 | Condition | Surface |
 |---|---|
-| PRD resolved, no pending tasks match its US tags | `Active PRD: <path>. 0 tasks tied to its user stories. Run /code:plan to decompose the PRD before /code:ship.` |
-| PRD resolved, pending tasks exist but all match a *different* PRD | `Active PRD: <path>. Pending tasks (<count>) belong to a different PRD (<their tags>). Either switch branch or run /code:plan on this branch.` |
+| PRD found, no pending tasks match its US tags | `Active PRD: <path>. 0 tasks tied to its user stories. Run /code:plan to decompose the PRD before /code:ship.` |
+| PRD found, pending tasks belong to a *different* PRD | `Active PRD: <path>. Pending tasks (<count>) belong to a different PRD (<their tags>). Switch branch or run /code:plan on this branch.` |
 | No PRD, no pending tasks | `No PRD for this branch and no pending tasks. Nothing to ship — run /code:fix or /code:plan first.` |
 
-In every case, **stop**. Do not invent tasks, do not dispatch the prior branch's queue.
+In every case, **stop**.
 
 ## Dispatch
 
-Every task runs as a forked subagent in its own worktree. Use `Agent` with `isolation: "worktree"`, `subagent_type: "general-purpose"`, and `model: "sonnet"` (Sonnet 4.6 — routine coding tier). **Do not** shell out to `git worktree add` — `isolation: "worktree"` handles it (requires `CLAUDE_CODE_FORK_SUBAGENT=1` on external builds; default-on inside this harness).
+Every task runs as a forked subagent in its own worktree: `Agent(isolation: "worktree", subagent_type: "general-purpose", model: "sonnet")`. Sonnet 4.6 — routine vertical-slice coding from a complete brief.
 
-**Model assignments across the swarm:**
+Independent tasks **must** dispatch in a single message with multiple `Agent` calls so they run concurrently — never serialize what could fan out. Dependency graph from `TaskGet` drives order.
+
+### Model assignments
 
 | Role | Model | Why |
 |---|---|---|
-| Orchestrator (this skill) | inherits (Opus 4.7) | Multi-step coordination + decisions on partial failures. |
-| Per-task implementer | `sonnet` (4.6) | Routine vertical-slice coding from a complete brief. |
-| Per-task reviewer fork | `opus` (4.7) | Catching bugs the implementer missed is high-leverage — an 8-pt SWE-bench gap on the reviewer pays for itself. Reviewer errors fail silently; implementer errors get caught downstream. |
-| Per-task review fix-pass | `opus` (4.7) | Applies reviewer findings — same model as the reviewer to keep judgment consistent across the find/fix pair. |
-| Post-merge audit fix-pass | `opus` (4.7) | Judgment call on the audit gate — layer slips, dependency advisories. |
-| Explore (when delegated for breadth) | `haiku` (4.5) | Cheap breadth searches for cold areas. Implementer/reviewer prompt may request this. |
-
-Dependency graph drives order. Independent tasks **must** dispatch in a single message with multiple `Agent` calls so they run concurrently — never serialize what could fan out.
+| Orchestrator (this skill) | inherits (Opus 4.7) | Multi-step coordination + partial-failure decisions. |
+| Per-task implementer | `sonnet` (4.6) | Routine slice coding from a complete brief. |
+| Per-task reviewer fork | `opus` (4.7) | Catching missed bugs is high-leverage; reviewer errors fail silently. |
+| Per-task review fix-pass | `opus` (4.7) | Same judgment as the reviewer for find/fix consistency. |
+| Post-audit fix-pass | `opus` (4.7) | Audit-gate findings often need judgment. |
+| Explore (when delegated) | `haiku` (4.5) | Cheap breadth searches for cold areas. |
 
 ### Dispatch prompt template
 
-Each subagent starts cold. Send one comprehensive first turn — intent, constraints, acceptance criteria, `file:line` anchors, verification, and rationale — so it operates autonomously without back-and-forth. Use this template verbatim (fill `<…>` from task metadata + active PRD):
+Each subagent starts cold. Send one comprehensive first turn — intent, constraints, acceptance criteria, `file:line` anchors, verification, rationale.
 
 ```
 # Task <id>: <title>
 
 ## Tag
-<metadata.user_story — one of: US-N | AC-N.M | chore:<reason> | none>
+<metadata.user_story — one of: US-N | AC-N.M | chore:<reason>>
 
 ## PRD context (if US-N or AC-N.M)
-<Paste the matching US-N / AC-N.M block from the active PRD, resolved via ${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh. Include the parent User Story and all its ACs so the agent sees full intent.>
+<Paste the matching US-N / AC-N.M block from the active PRD. Include the parent
+User Story and all its ACs so the agent sees full intent.>
 
 ## Rationale
-<metadata.rationale — verbatim from plan. The why, not the what.>
+<metadata.rationale — verbatim. The why, not the what.>
 
 ## Files to touch
-<For each metadata.files[] entry, render one bullet:
-  "- <op> <path>[:<line>] → <symbol>"
-omitting ":<line>" if absent and "→ <symbol>" if absent. Examples:
-  - modify crates/domain/src/user.rs:42 → User::validate
-  - add crates/infrastructure/src/db/users.rs → UserRepository
-  - delete crates/infrastructure/src/legacy.rs:89 → old_validate_fn
-Read each entry's file (sliced) before editing. `line` is a hint — if the symbol has moved, re-resolve via LSP `documentSymbol`; `symbol` is the contract. Apply each op exactly: `add` creates, `modify` edits in place, `replace` full-rewrites the symbol, `delete` removes it (plus all references).>
+<For each metadata.files[] entry, render:
+  - <op> <path>[:<line>] → <symbol>
+Examples:
+  - modify src/modules/orders/index.ts:42 → Orders.place
+  - add src/http/routes/orders.ts → placeOrder
+  - delete src/modules/orders/legacy.ts:89 → oldPlace
+Read each entry's file (sliced) before editing. `line` is a hint — if the symbol
+moved, re-resolve via Grep/LSP; `symbol` is the contract. Apply each op exactly.>
 
-## Layer
-<metadata.layer — domain | application | infrastructure | interface | chore. Imports point inward; `cargo build` enforces this.>
+## Module
+<metadata.module — the primary module this slice mostly lives in. Free-form;
+matches src/modules/<name>/.>
 
 ## Expected outcome
 <metadata.expected_outcome — observable success criterion.>
@@ -91,56 +90,63 @@ Read each entry's file (sliced) before editing. `line` is a hint — if the symb
 Run `<metadata.verification>`. Must exit 0. All existing tests must still pass.
 
 ## Constraints
-- Follow rules in `code-et-implementer/CLAUDE.md` (Brevity, Context Hygiene, Clean Architecture controlling rules, ≤600 lines/file).
-- Layer rules: `code-et-implementer/docs/architecture.md`. Anti-slop hard rules: `code-et-implementer/docs/anti-slop.md`. Test matrix: `code-et-implementer/docs/testing.md`.
-- Read in slices: `Read(offset, limit)` for files >200 lines; never re-read the same file twice for different blocks.
-- Delegate breadth to `Agent(subagent_type: "Explore")` if the fix path is unclear — do not Grep-and-Read your way through unknown territory.
-- Every acceptance criterion must have a corresponding test.
-- No scope expansion — implement exactly what the task specifies; flag adjacent issues instead of fixing inline.
-- If the slice supersedes existing code, delete the superseded code in the same commit. No parallel utilities, no `// TODO: remove old X`. New code obsoletes old.
-- All SQL via `sqlx::query!` / `query_as!` (compile-time-checked). Raw `sqlx::query` is forbidden.
-- Commit format: `<prefix>: <subject>` where prefix is US-N | AC-N.M | chore (or no prefix if tag is `none`).
+- Architecture: deep modules (see code-et-implementer/docs/architecture.md). No
+  fixed layer taxonomy; modules grow around interfaces. The interface is the
+  test surface — assert behaviour through it, not past it.
+- Anti-slop hard rules: code-et-implementer/docs/anti-slop.md. Apply the deletion
+  test before any new extraction.
+- Test matrix: code-et-implementer/docs/testing.md.
+- Read in slices (Read(offset, limit)) for files > 200 lines.
+- Delegate breadth: Agent(subagent_type: "Explore", model: "haiku") for unknown
+  territory instead of Grep-and-Read tours.
+- Every acceptance criterion gets a corresponding test.
+- No scope expansion — implement exactly what the task specifies; flag adjacent
+  issues, don't fix inline.
+- Supersession deletion in the same commit. No parallel utilities, no `// TODO:
+  remove old X`.
+- HTTP input parsed with Zod at the seam. Modules trust their callers within the
+  process boundary.
+- Commit format: `<prefix>: <subject>` where prefix is US-N | AC-N.M | chore.
 
-## Deliverables (subagent reports back)
+## Deliverables
 1. Code changes committed in the isolated worktree.
 2. `metadata.verification` exits 0.
 3. Single commit with correct prefix.
-4. PRD checkbox ticked (if `US-N`) — flip `- [ ] US-N` to `- [x] US-N` and stage with the commit.
-5. Final report: commit SHA, branch name, worktree path (returned in the `Agent` tool result).
+4. PRD checkbox ticked (if `US-N`) — flip `- [ ] US-N` to `- [x] US-N` and stage
+   with the commit.
+5. Final report: commit SHA, branch name, worktree path.
 
-Do not merge back to the parent feature branch — the orchestrator handles that. Do not ask clarifying questions. If blocked, flag in the final report with a specific file:line reference.
+Do not merge back; the orchestrator handles that. Do not ask clarifying questions.
+If blocked, flag in the final report with a file:line reference.
 ```
 
 ### Per-subagent contract
 
-1. Implement the task. Every acceptance criterion has a corresponding test.
+1. Implement the task. Every acceptance criterion has a test.
 2. Run `metadata.verification`. Must compile, tests must pass.
-3. Commit with the right prefix:
+3. Single commit with the right prefix:
    - `US-N: <subject>` when tag is `US-N`
    - `AC-N.M: <subject>` when tag is `AC-N.M`
    - `chore: <subject>` when tag starts with `chore:`
-   - No prefix when tag is `none` or absent.
-4. **Tick the PRD checkbox.** If `metadata.user_story` is `US-N`, resolve the PRD via `${CLAUDE_PLUGIN_ROOT}/scripts/resolve-prd.sh` and `Edit` to flip `- [ ] US-N` → `- [x] US-N`. Stage with the commit.
+4. **Tick the PRD checkbox** if `metadata.user_story` is `US-N`: `Edit` the PRD to flip the checkbox; stage with the commit.
 
-The subagent stops after step 4 and returns. It must **not** merge or remove its own worktree — it has no view of the parent feature branch.
+The subagent stops after step 4 and returns. It must **not** merge or remove its worktree.
 
 ## Per-task review (before merge)
 
-Code review happens twice in v4.1+: once per task before merge (this section, shift-left), and once across the full feature branch at `/code:review` (pre-PR gate). Per-task review catches logic bugs at the smallest possible diff — task 1's bug never gets to pollute task 2's foundation.
+Two review passes: per-task (here, shift-left) and across the full branch at `/code:review`. Per-task review catches logic bugs at the smallest possible diff.
 
 ### Step 1 — Capture the diff
-
-After the implementer subagent returns successfully:
 
 ```
 diff="$(git -C <worktree_path> diff $(git merge-base HEAD <subagent_branch>)..<subagent_branch>)"
 ```
 
-Empty diff = implementer didn't write code. Halt that task and surface to the user; do not dispatch a reviewer.
+Empty diff = implementer didn't write code. Halt that task and surface to the user.
 
 ### Step 2 — Dispatch the reviewer (Opus 4.7)
 
-Reviewer is a fork — `Agent(model: "opus")` with no `subagent_type` and no `isolation`. It works against the diff payload, not the worktree.
+Reviewer is a fork — `Agent(model: "opus")` with no `subagent_type` and no `isolation`. Works against the diff payload, not the worktree.
 
 If the diff exceeds **1500 lines**, halt this task and surface a "task too large — split or escalate to `/code:review` only" warning instead of dispatching. A vertical slice that big is almost always two slices in disguise.
 
@@ -152,14 +158,14 @@ Reviewer prompt:
 ## Diff (against parent feature branch)
 <diff content — full payload, ≤1500 lines>
 
-## Rationale (why this task exists)
+## Rationale
 <metadata.rationale>
 
 ## Expected outcome
 <metadata.expected_outcome>
 
-## Layer
-<metadata.layer>
+## Module
+<metadata.module>
 
 Review the diff against the rationale + expected outcome.
 
@@ -167,84 +173,95 @@ Review the diff against the rationale + expected outcome.
 ```
 Skill("code-review")
 ```
-If it returns findings, use them. If the skill is not installed (the call errors with "skill not found"), fall back to Step B.
+If it returns findings, use them. If the skill is not installed, fall back to Step B.
 
-**Step B — Inline 5-area review** (mirror of `/code:review` Step 2):
-1. **Layer compliance** — does any new file violate the inward dependency rule? (`code-et-implementer/docs/architecture.md` §"The Dependency Rule")
-2. **Anti-slop** — Rule of Three duplicates, mirror tests, defensive validation, dead re-exports. (`code-et-implementer/docs/anti-slop.md` §"Hard rules")
-3. **Test coverage** — every acceptance criterion has a corresponding test. (`code-et-implementer/docs/testing.md` §"Per-layer test matrix")
-4. **Security** — secrets in `secrecy::Secret<T>`; auth at every interface entry point. (`code-et-implementer/docs/architecture.md` §"Rust security checklist")
-5. **Slice integrity** — coherent vertical slice; superseded code deleted in same commit; no `// TODO: remove old X`.
+**Step B — Inline 5-area review:**
+1. **Deep-module shape** — does any new module pass the deletion test? Is anything
+   extracted as a shallow pass-through? (code-et-implementer/docs/architecture.md)
+2. **Anti-slop** — Rule of Three duplicates, mirror tests, defensive validation,
+   dead re-exports. (code-et-implementer/docs/anti-slop.md §"Hard rules")
+3. **Test coverage** — every acceptance criterion has a test; tests assert through
+   the interface, not past it. (code-et-implementer/docs/testing.md)
+4. **Security** — Zod at HTTP seams; secrets not in logs; auth on mutating routes.
+5. **Slice integrity** — coherent vertical slice; superseded code deleted same
+   commit; no `// TODO: remove old X`.
 
-**Output format — strict.** Output ONLY the JSON array as your final message. No preamble, no code fences, no explanation. If no CRITICAL or HIGH findings, output exactly: `[]`
+**Output format — strict.** Output ONLY the JSON array. No preamble, no code
+fences. If no CRITICAL or HIGH findings, output exactly: `[]`
 
-Schema:
-[{"severity": "CRITICAL|HIGH", "file": "path:line", "issue": "<one sentence>"}]
+Schema: [{"severity": "CRITICAL|HIGH", "file": "path:line", "issue": "<one sentence>"}]
 
-Drop MEDIUM and LOW findings — those are for `/code:review` to catch later. Do not modify code. You are a reviewer, not a fixer.
+Drop MEDIUM/LOW — those are for /code:review. Do not modify code.
 ```
 
 ### Step 3 — On CRITICAL/HIGH findings, dispatch ONE review fix-pass
 
-Spawn `Agent(subagent_type: "general-purpose", model: "opus")` with no isolation. Prompt directs it to operate via `git -C <worktree_path>` and explicit file paths inside `<worktree_path>`:
+`Agent(subagent_type: "general-purpose", model: "opus")` with no isolation. Prompt directs it to operate via `git -C <worktree_path>` and explicit paths inside `<worktree_path>`:
 
 ```
 # Review fix-pass for <task-id>
 
-The per-task reviewer flagged the following CRITICAL/HIGH findings on the diff in worktree <worktree_path>:
+The per-task reviewer flagged these CRITICAL/HIGH findings on the diff in
+worktree <worktree_path>:
 
 <findings JSON>
 
-Fix each finding. Use absolute paths or `git -C <worktree_path>` for git operations. After fixing, re-run `<metadata.verification>` from inside `<worktree_path>` (must exit 0). Commit the fix-up with subject "fix-up: <task tag>". Return the new HEAD SHA.
+Fix each finding. After fixing, re-run `<metadata.verification>` from inside
+<worktree_path> (must exit 0). Commit the fix-up with subject "fix-up: <task tag>".
+Return the new HEAD SHA.
 
-Constraints: same as the implementer (Brevity, Context Hygiene, Clean Architecture rules). No scope expansion — fix the findings only.
+No scope expansion — fix the findings only.
 ```
 
-After the review fix-pass returns, **do not re-review**. One cycle max — same retry budget as the post-merge audit. If the fix-pass returns without a new commit or `verification` fails, halt that task and surface findings to the user (leave the worktree in place for inspection).
+After the fix-pass returns, **do not re-review**. One cycle max. If `verification` still fails, halt that task and surface to the user (leave the worktree in place).
 
 ## Orchestrator (this skill)
 
 After each `Agent` call returns:
-1. Read the returned worktree path and branch from the tool result.
-2. Run **Per-task review** (above). On CRITICAL/HIGH, dispatch one review fix-pass and continue.
+
+1. Read the worktree path and branch from the tool result.
+2. Run **Per-task review** (above). On CRITICAL/HIGH, dispatch one review fix-pass.
 3. From the parent feature branch: `git merge --no-ff <subagent-branch>`.
-4. `git worktree remove <path>` (the harness auto-cleans empty worktrees, but populated ones need explicit removal).
+4. `git worktree remove <path>` (auto-cleaned if empty, but populated worktrees need explicit removal).
 5. Mark the task completed via `TaskUpdate` only after the merge lands.
 
-If a subagent reports failure, or the review fix-pass cannot resolve findings, leave the worktree in place for inspection — do not auto-discard.
+On a failure (subagent reports blocked, or fix-pass can't resolve), leave the worktree in place — do not auto-discard.
 
 ## After all tasks land — audit
 
-Run `Skill("simplify")` first (changed-code refactor pass). Then run the local audit:
-
 ```
-Bash('bash "${CLAUDE_PLUGIN_ROOT}/scripts/audit.sh" "$PWD"')
+Bash('bun run audit')
 ```
 
-The audit mirrors the v4.0 CI gate: `cargo fmt --check`, `cargo clippy -D warnings`, `scripts/layer-deps-validator.sh`, `cargo machete`, `cargo audit`, `cargo deny check`, `cargo nextest run --workspace`. Report at `.claude/audit-<UTC>.md`.
+The audit mirrors the CI gate: `biome check`, `tsc --noEmit`, `bun audit`, `bun test`. Report appended to `.claude/audit-<UTC>.md`.
+
+Optionally run `Skill("simplify")` first if the engineering plugin's simplify skill is installed — a changed-code refactor pass before the static gate.
 
 ### Auto-retry on CRITICAL/HIGH (max 1 pass)
 
-If audit exits non-zero with CRITICAL or HIGH findings (the typical: layer violation, dependency advisory, clippy lint, test failure):
+If audit exits non-zero with CRITICAL or HIGH findings:
 
-1. Read `.claude/audit-<UTC>.md` — extract the highest-severity finding's `path:line` + message.
-2. Dispatch **one** fix-pass subagent via `Agent(subagent_type: "general-purpose", model: "opus")` (no worktree isolation — work directly on the feature branch since the task swarm already merged; Opus 4.7 here because audit-gate findings often require judgment — layer slips, dependency advisories, real test failures vs flakes):
+1. Read `.claude/audit-<UTC>.md` — extract highest-severity `path:line` + message.
+2. Dispatch **one** fix-pass via `Agent(subagent_type: "general-purpose", model: "opus")` (no isolation — work on the feature branch since tasks merged):
+
    ```
    # Audit fix-pass
    The post-implement audit returned <severity> at <path:line>: <message>.
    Read the report at .claude/audit-<UTC>.md for full context.
-   Fix the finding(s). Then re-run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/audit.sh" "$PWD"`.
-   Constraints: same as task subagents (see ship.md). No scope expansion — fix the audit findings, nothing else.
+   Fix the finding(s). Then re-run `bun run audit`.
+   No scope expansion — fix the audit findings, nothing else.
    ```
-3. Wait for the fix-pass to return.
-4. Re-run audit once. If still failing, **stop the chain** and surface:
+
+3. Wait for fix-pass to return.
+4. Re-run audit once. If still failing, **stop**:
+
    ```
    Audit still failing after 1 fix-pass. Latest report: .claude/audit-<UTC>.md
    Highest finding: <severity> <path:line> — <message>
    Inspect, fix manually, then re-run /code:ship to retry the audit step only.
    ```
 
-Never loop more than once — repeated AI fix-passes on a stuck audit waste tokens and hide the real issue.
+Never loop more than once.
 
 ### On clean audit
 
@@ -253,12 +270,6 @@ Never loop more than once — repeated AI fix-passes on a stuck audit waste toke
 Next: /code:review (or /commit-push-pr to ship).
 ```
 
-```
-Bash("command -v cmux &>/dev/null && [ -n \"$CMUX_SOCKET_PATH\" ] && cmux notify --title 'Ship done' --subtitle 'Audit clean' || true")
-```
-
 ## Notes
 
-- The `SubagentStop` hook (`scripts/verify-gate.sh`) runs `cargo test` + `audit --fast` after each subagent — that's the inner loop. The full audit at the end is the outer gate.
-- `--fast` runs only fmt + clippy. The post-tasks pass runs the full seven stages.
-- The audit is **the** anti-slop enforcement. Never tweak its findings to make it pass — fix the code, or accept a `LOW` finding when a tool is genuinely missing on the host.
+- The audit is **the** anti-slop enforcement. Never tweak findings to make it pass — fix the code, or accept a `LOW` when a tool is genuinely missing on the host.

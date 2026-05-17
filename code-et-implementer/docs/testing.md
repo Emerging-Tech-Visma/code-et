@@ -1,196 +1,179 @@
 ---
 name: testing
-description: Per-layer Rust testing matrix. Mirror-test ban. Contract + security tests at boundaries. cargo-nextest as the runner.
-applies_to: rust
+description: Testing doctrine for code-et v5 — interface-as-test-surface, deep-module test patterns, mirror-test ban, vertical-slice integration tests with Bun test.
+applies_to: typescript
 ---
 
-# Rust Testing Doctrine (code-et)
+# Testing — through the interface (code-et v5)
 
-Tests assert **observable behaviour at boundaries**, not implementation calls. The pyramid is steep: many fast unit tests in `domain` and `application`, fewer integration tests in `infrastructure`, very few e2e tests in `interface`. Mirror tests are banned.
+**The interface is the test surface.** Callers and tests cross the same seam. If you want to test *past* the interface, the module is the wrong shape — fix the shape, not the test.
 
-For the general pyramid + what-to-cover guidance, see the engineering plugin's `testing-strategy` skill. This document is the *Rust-specific* delta.
+The pyramid is steep: many fast tests through deep-module interfaces, a thin layer of HTTP-seam integration tests, very few full-stack e2e tests. Mirror tests are banned.
 
-## Per-layer test matrix
+For the general pyramid + what-to-cover guidance, see the engineering plugin's `testing-strategy` skill. This document is the *TypeScript-specific* delta.
 
-| Layer | Test type | Where | Runner | What to assert | What NOT to assert |
-|---|---|---|---|---|---|
-| `domain` | Unit | `crates/domain/src/**` `#[cfg(test)] mod tests` | `cargo nextest` | Pure-logic invariants, value-object construction, error variants. | Anything that requires a runtime, DB, network. |
-| `application` | Use-case | `crates/application/tests/` (integration test crate) or `#[cfg(test)]` | `cargo nextest` | Use-case behaviour with `mockall` fakes for ports. Inputs at use-case API → outputs at use-case API. | Repository SQL. HTTP handlers. Dioxus rendering. |
-| `infrastructure` | Integration | `crates/infrastructure/tests/` | `cargo nextest` + `#[sqlx::test]` | Repository methods against a real DB (SQLite for unit, Postgres in CI service container). HTTP clients against a recorded fixture (`wiremock`). | Use-case logic. UI behaviour. |
-| `interface` | E2E | `apps/server/tests/` for HTTP, `crates/interface/tests/` for dioxus components | `cargo nextest` + `axum-test` + `dioxus-testing` | Round-trip: HTTP request → router → use case → repo → response. Dioxus component renders the right tree given props. | Internal call shapes. Error stack traces verbatim. |
+## Test matrix
 
-## Concrete patterns
+| Test type | Where | What to assert | What NOT to assert |
+|---|---|---|---|
+| **Module-interface** | `src/modules/<m>/<m>.test.ts` | Behaviour through the module's exported interface. Inputs at the interface → observable outputs at the interface. | Internal call shapes; private functions; how many times a dependency was called. |
+| **HTTP-seam** | `src/http/routes/<r>.test.ts` | Round-trip: HTTP request → router → module → DB stand-in → response. Status codes, response shapes, auth gates. | Module internal logic (covered above); database SQL syntax. |
+| **E2E (sparse)** | `tests/e2e/*.test.ts` | Critical happy paths end-to-end with the real server bound to an ephemeral port. | Edge cases the lower tiers already cover. |
 
-### `domain` — pure unit tests
+Run all of it with `bun test`. The runner picks up `*.test.ts` everywhere; co-locate tests next to the module they test.
 
-```rust
-// crates/domain/src/value_objects/email.rs
-#[cfg(test)]
-mod tests {
-    use super::*;
+## Module-interface tests — the workhorse
 
-    #[test]
-    fn rejects_missing_at_sign() {
-        assert!(Email::new("not-an-email").is_err());
-    }
+A deep module exports an interface. Tests build the module with stand-in dependencies, then exercise it through the same interface a real caller uses.
 
-    #[test]
-    fn accepts_simple_address() {
-        let e = Email::new("user@example.com").unwrap();
-        assert_eq!(e.as_str(), "user@example.com");
-    }
+```ts
+// src/modules/orders/orders.test.ts
+import { describe, it, expect } from "bun:test";
+import { makeOrders } from "./impl";
+import { inMemoryDb, fixedClock } from "../../test/stand-ins";
+
+describe("orders", () => {
+  it("places an order and returns its id", async () => {
+    const orders = makeOrders({ db: inMemoryDb(), clock: fixedClock("2026-01-01") });
+
+    const id = await orders.place({
+      customerId: "c-1",
+      lines: [{ sku: "A", qty: 2, unitPrice: 500 }],
+    });
+
+    const found = await orders.byId(id);
+    expect(found?.total).toEqual({ currency: "USD", amount: 1000 });
+    expect(found?.status).toBe("pending");
+  });
+});
+```
+
+Notes:
+
+- **No mocking the implementation under test.** `makeOrders` is called with real stand-ins for its dependencies; the orders module itself is whole.
+- **Stand-ins live in `src/test/stand-ins.ts`** (or per-module if specific). `inMemoryDb()` is a Drizzle SQLite `:memory:` instance running the real schema and migrations — same query layer as production.
+- **Assert observable outputs.** `place` returns an id; `byId` returns the order. Don't assert that `db.insert` was called.
+
+## HTTP-seam tests — via Hono's `app.fetch`
+
+Hono's `app` is a `fetch`-compatible function. Build the app with stand-in modules, then call it directly — no server required.
+
+```ts
+// src/http/routes/orders.test.ts
+import { describe, it, expect } from "bun:test";
+import { buildHttp } from "../app";
+import { stubOrders } from "../../test/stand-ins";
+
+describe("POST /orders", () => {
+  it("returns 201 with the new order id", async () => {
+    const app = buildHttp({ orders: stubOrders({ placeReturns: "ord-1" }) });
+
+    const res = await app.fetch(
+      new Request("http://x/orders", {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: "Bearer test" },
+        body: JSON.stringify({ customerId: "c-1", lines: [] }),
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ id: "ord-1" });
+  });
+
+  it("rejects an unauthenticated request with 401", async () => {
+    const app = buildHttp({ orders: stubOrders() });
+    const res = await app.fetch(new Request("http://x/orders", { method: "POST", body: "{}" }));
+    expect(res.status).toBe(401);
+  });
+});
+```
+
+These tests cover the things only the seam knows: parsing, auth, error mapping. They don't re-cover what the module-interface tests already proved.
+
+## E2E — keep it sparse
+
+```ts
+// tests/e2e/orders-flow.test.ts
+import { describe, it, expect, beforeAll, afterAll } from "bun:test";
+import { start } from "../../src/main";
+
+let server: { url: string; stop: () => Promise<void> };
+beforeAll(async () => { server = await start({ port: 0, database: ":memory:" }); });
+afterAll(async () => { await server.stop(); });
+
+it("a customer places and retrieves an order", async () => {
+  const place = await fetch(`${server.url}/orders`, { method: "POST", /* ... */ });
+  expect(place.status).toBe(201);
+  const { id } = await place.json();
+  const get = await fetch(`${server.url}/orders/${id}`);
+  expect(get.status).toBe(200);
+});
+```
+
+Two or three of these per major user flow. Not one per acceptance criterion — the lower tiers do that work.
+
+## Contract tests at seams with multiple adapters
+
+When a module declares a port and has more than one adapter (e.g. an in-memory adapter for tests and an HTTP adapter for production), write a **contract test** that runs against every adapter:
+
+```ts
+// src/modules/payments/contract.test.ts
+import { describe } from "bun:test";
+import { paymentsContract } from "./contract";
+import { makeInMemoryPayments } from "./adapters/in-memory";
+import { makeStripePayments } from "./adapters/stripe";
+
+describe("in-memory payments adapter", () => paymentsContract(() => makeInMemoryPayments()));
+
+if (process.env.STRIPE_TEST_KEY) {
+  describe("stripe payments adapter", () => paymentsContract(() => makeStripePayments(env.STRIPE_TEST_KEY)));
 }
 ```
 
-No fixtures, no mocks, no async. If a domain test needs setup beyond `let x = Foo::new(...)`, the abstraction is wrong.
-
-### `application` — use cases with `mockall`
-
-```rust
-// crates/application/src/use_cases/get_user.rs
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::ports::MockUserRepo;
-    use mockall::predicate::eq;
-
-    #[tokio::test]
-    async fn returns_user_when_repo_finds_one() {
-        let mut repo = MockUserRepo::new();
-        repo.expect_by_id()
-            .with(eq(UserId::from(42)))
-            .returning(|_| Ok(Some(User::sample())));
-        let use_case = GetUser::new(repo);
-
-        let result = use_case.execute(UserId::from(42)).await.unwrap();
-
-        assert_eq!(result.id, UserId::from(42));
-    }
-}
-```
-
-`mockall` generates the mock from the trait. **Assert observable inputs/outputs of the use case** — never `verify` that a specific repo method was called N times. If you find yourself doing that, the use case is leaking implementation detail.
-
-### `infrastructure` — `#[sqlx::test]` against a real DB
-
-```rust
-// crates/infrastructure/src/repos/postgres_user_repo.rs
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[sqlx::test]
-    async fn round_trips_a_user(pool: PgPool) {
-        let repo = PostgresUserRepo::new(pool);
-        let user = User::sample();
-
-        repo.save(&user).await.unwrap();
-        let fetched = repo.by_id(user.id).await.unwrap().unwrap();
-
-        assert_eq!(fetched, user);
-    }
-}
-```
-
-`#[sqlx::test]` provisions a fresh test database for each test (in Postgres) or an in-memory file (in SQLite). Run with `DATABASE_URL=sqlite::memory:` for unit-speed; against a Postgres service container in CI.
-
-### `interface` — HTTP e2e via `axum-test`
-
-```rust
-// apps/server/tests/users_api.rs
-use axum_test::TestServer;
-
-#[tokio::test]
-async fn get_user_returns_200_with_user_json() {
-    let app = test_app().await;
-    let server = TestServer::new(app).unwrap();
-
-    let response = server.get("/users/42").await;
-
-    response.assert_status_ok();
-    response.assert_json(&serde_json::json!({ "id": 42, "email": "..." }));
-}
-```
-
-`test_app()` is a helper that builds the full router with **fake repos** (mockall) for fast tests, or **real repos** (in-memory SQLite) for round-trip tests. Both are valuable; favour the fast variant for breadth, the round-trip for the happy path.
-
-### `interface` — Dioxus component tests
-
-```rust
-// crates/interface/src/components/user_card.rs
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use dioxus_testing::*;
-
-    #[test]
-    fn renders_user_email_when_present() {
-        let dom = render(UserCard {
-            user: User::sample_with_email("alice@example.com"),
-        });
-        assert!(dom.text().contains("alice@example.com"));
-    }
-}
-```
-
-Test props in, rendered text/structure out. Don't assert on internal hook order.
-
-## Contract tests at boundaries
-
-Every port (trait in `application`) has a **contract test** that runs against every implementation. The trait-level test lives in `crates/application/tests/contracts/<port>.rs`; each `infrastructure` impl includes the test.
-
-```rust
-// crates/application/tests/contracts/user_repo.rs
-pub fn user_repo_contract<R: UserRepo + Clone>(repo: R) {
-    // Exercises: save → by_id → modify → save → by_id again.
-    // Asserts only the trait's behavioural contract, not impl detail.
-}
-
-// crates/infrastructure/tests/postgres_user_repo.rs
-#[sqlx::test]
-async fn obeys_user_repo_contract(pool: PgPool) {
-    user_repo_contract(PostgresUserRepo::new(pool));
-}
-
-// crates/infrastructure/tests/sqlite_user_repo.rs
-#[sqlx::test]
-async fn obeys_user_repo_contract(pool: SqlitePool) {
-    user_repo_contract(SqliteUserRepo::new(pool));
-}
-```
-
-If both impls pass the contract, you can swap them in production. This is the test seam Clean Architecture exists to give you.
-
-## Security test cases
-
-Each `interface` boundary gets at least these tests:
-
-| Boundary | Test |
-|---|---|
-| HTTP routes that mutate | An unauthenticated request returns 401; an authenticated request as the wrong user returns 403; a malformed body returns 400 with no leaked internal detail. |
-| HTTP routes that read | The same auth checks. Sensitive fields (password hashes, secrets) are never in response JSON. |
-| SQL queries | A test passes a string with `'; DROP TABLE …` characters as a parameter. The query treats it as data. (`sqlx::query!` makes this impossible structurally — the test is documentation more than enforcement.) |
-| Deserialization | A request body 10× the expected size is rejected at the parsing layer with 400, not OOM. |
-| File uploads (if any) | A path-traversal filename (`../../etc/passwd`) is rejected. |
+The `paymentsContract` function (in `src/modules/payments/contract.ts`) is a `describe`-builder that takes a factory and asserts the port's behavioural contract — nothing implementation-specific. If both adapters pass, you can swap them in production.
 
 ## Mirror-test ban
 
-A mirror test is one whose pass condition mirrors the implementation rather than the caller's contract. They pass for any code that compiles and break only when the implementation is rewritten — making the test useless during refactors.
+A mirror test's pass condition mirrors the implementation rather than the caller's contract. They pass for any code that compiles and break only when the implementation is rewritten — making the test useless during refactors.
 
 | ✗ Mirror | ✓ Behavioural |
 |---|---|
-| `assert_eq!(add(2, 3), 2 + 3);` | `assert_eq!(add(2, 3), 5);` |
-| `verify(repo.save_called_with(&user));` | `assert_eq!(use_case.execute(user.clone()).await?, user);` |
-| `assert_eq!(format!("{:?}", err), "DomainError::NotFound");` | `assert!(matches!(err, DomainError::NotFound));` |
+| `expect(add(2, 3)).toBe(2 + 3);` | `expect(add(2, 3)).toBe(5);` |
+| `expect(repo.save).toHaveBeenCalledWith(user);` | `expect(await useCase.execute(user)).toEqual(user);` |
+| `expect(err.toString()).toBe("DomainError: NotFound");` | `expect(err).toBeInstanceOf(NotFoundError);` |
+| `expect(JSON.stringify(result)).toMatchSnapshot();` *(on internal data)* | `expect(result.status).toBe("ok"); expect(result.total).toBe(42);` |
 
 If a test is hard to write without referencing implementation detail, the implementation is wrong (too coupled, too leaky) — fix the code, not the test.
 
-## The runner: `cargo-nextest`
+## Stand-ins, not mocks
 
-`cargo nextest run --workspace` is the default. It runs tests in parallel processes (faster than `cargo test`), retries flaky tests with the right config, and emits machine-readable output for CI. The CI workflow uses it; local `justfile` exposes `just test`.
+A **stand-in** is a real implementation of a small interface; a **mock** is a recorded set of return values. Prefer stand-ins.
+
+- `inMemoryDb()` — a Drizzle SQLite `:memory:` running the real schema. The same `db.query.orders.findFirst(...)` calls execute against it. Tests assert through the module's interface; the stand-in is invisible.
+- `fixedClock(iso)` — `{ now: () => Date }` returning a fixed time.
+- `stubOrders({ placeReturns: "ord-1" })` — a hand-written tiny impl of the `Orders` interface for HTTP-seam tests where the module under test is the route, not orders.
+
+When you genuinely cannot stand in (true-external dependency: Stripe, Twilio), inject a mock. Restrict mocks to the **outermost** seam; never mock a module from inside its own tests.
+
+## The runner: `bun test`
+
+`bun test` is the default. It auto-discovers `*.test.ts`, runs in parallel processes, supports `describe`/`it`/`expect`, and is fast enough that watch-mode (`bun test --watch`) is the inner-loop tool.
+
+In CI: `bun test --coverage` if a coverage gate matters; the audit workflow keeps it simple and runs `bun test`.
+
+## Security test cases
+
+Every HTTP seam gets at least these:
+
+| Boundary | Test |
+|---|---|
+| Mutating routes | Unauth → 401; authed-wrong-actor → 403; malformed body → 400 with no leaked internal detail. |
+| Read routes | Same auth checks. Sensitive fields (password hashes, secret tokens) never in response JSON. |
+| Query parameters | Zod-parsed; oversized inputs rejected with 400, not OOM. |
+| File uploads (if any) | A path-traversal filename (`../../etc/passwd`) is rejected. |
 
 ## See also
 
-- [`docs/architecture.md`](architecture.md) — the layer model the test matrix mirrors.
-- [`docs/anti-slop.md`](anti-slop.md) — Rule of Three, mirror-test ban (cross-referenced here).
-- Engineering plugin's `testing-strategy` skill — for the pyramid + general what-to-cover.
+- [`architecture.md`](architecture.md) — the seam vocabulary; dependency categories drive test strategy.
+- [`anti-slop.md`](anti-slop.md) — Rule of Three, mirror-test ban (cross-referenced here).
+- Engineering plugin's `testing-strategy` skill — pyramid + what-to-cover for the bigger picture.

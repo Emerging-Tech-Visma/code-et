@@ -1,106 +1,91 @@
 ---
 name: anti-slop
-description: Anti-slop framework + 5 slop categories + 4-stage verification loop. The CI gate enforces the deterministic stages; the engineering plugin's code-review skill catches the rest.
-applies_to: rust
+description: Anti-slop framework for TS deep-modules — 4 elements, 5 categories, 4-stage verification, hard rules. The CI gate enforces the deterministic stages; the engineering plugin's code-review skill catches the rest.
+applies_to: typescript
 ---
 
-# Anti-Slop (code-et)
+# Anti-Slop (code-et v5)
 
-AI-generated code accumulates structural debt that file-local linters miss: re-export cascades, orphaned modules, duplicated logic, defensive over-programming, mirror tests, architecture drift. This doctrine codifies what code-et's CI gate enforces and what reviewers catch by hand.
+AI-generated code accumulates structural debt that file-local linters miss: shallow modules extracted "for testability", duplicate utilities, defensive over-programming, mirror tests, drift away from the deep-module shape. This doctrine names the patterns and the gates.
 
 ## The 4 elements
 
-### 1. Global dead code & dependency pruning
+### 1. Shallow modules
 
-**Slop:** Functionally extinct code still reachable by the compiler — re-export cascades, orphaned modules, unused crates in `Cargo.toml`.
+**Slop:** Modules whose interface is nearly as complex as their implementation. Most often a pure function extracted for "testability" while the real bugs live in how it's called.
 
-**How to detect.**
-- Unused dependencies: `cargo machete` (fast, manifest-level). For deeper unused-code-path detection: `cargo +nightly udeps --workspace --all-targets`.
-- Dead code in source: `cargo clippy --workspace --all-targets -- -D warnings -W dead_code -W unreachable_pub`.
+**How to detect.** Apply the **deletion test** from [`architecture.md`](architecture.md): imagine deleting the module. If complexity vanishes, it was a pass-through — fold it back into the caller. If complexity reappears across N callers, the module earns its keep.
 
-**How to fix.** Delete the dead code in the same PR. Don't leave `// TODO: remove` markers. If a re-export exists for backwards compatibility, gate it behind a `#[deprecated]` attribute with a target removal version.
-
-**Goal:** code relevance, faster builds, fewer attack surfaces.
+**How to fix.** Merge the shallow module into the caller. If it shouldn't go away, deepen it — move more behaviour behind the same interface so callers get **leverage**.
 
 ### 2. Duplication
 
-**Slop:** "Logic spread" — one bug must be fixed in many places. Exact clones (copy-paste) and semantic clones (same logic, renamed variables).
+**Slop:** One bug must be fixed in many places. Exact clones, semantic clones, "I'll copy this helper into the new module".
 
-**How to detect.**
-- `clippy` catches some patterns (`clippy::clone_on_ref_ptr`, `clippy::needless_collect`, etc.).
-- Optional: `jscpd --languages rust --min-tokens 50 --threshold 0` for cross-file copy-paste.
+**Rule of Three.** Two duplicates is a coincidence; three is a pattern. **The third occurrence triggers a refactor in the same PR.** Extract into the module whose interface naturally owns the concept.
 
-**Rule of Three.** Two duplicates is a coincidence; three is a pattern. **The third occurrence triggers a refactor in the same PR.** Extract a function, a trait, or a shared module.
+**How to detect.** Biome catches some patterns. For cross-file copy-paste: `npx jscpd src --min-tokens 50` (run on demand, not in CI by default).
 
-**How to fix.** Extract. If the duplication is across layers, the extracted helper goes in the *innermost* layer that all callers can reach — usually `domain` (pure logic) or `application` (orchestration helpers).
+### 3. Defensive over-programming
 
-### 3. Complexity hotspots
+**Slop:** Excessive `Optional`/`Result` plumbing for inputs already validated upstream. Re-validating in `application` what `interface` already parsed with Zod. `if (!x) throw new Error("x is required")` on a non-null parameter.
 
-**Slop:** High cognitive load — deeply nested `match`, complex lifetime constraints, functions doing five things.
+**How to fix.** Validate at the seam (HTTP route, queue handler, file parser). Trust internal calls. Pre-conditions in types: if `Order` exists in memory, its fields are valid — don't re-check them on every method.
 
-**How to detect.**
-- `clippy::cognitive_complexity` (warn at 15 by default in `clippy.toml`; deny at 25). Cognitive complexity is preferred over cyclomatic — it weights nested logic and control-flow breaks more heavily.
-- `clippy::cyclomatic_complexity` as a secondary gate.
-- Manual: identify "critical hotspots" — files where high complexity intersects high change frequency (`git log --since=3.months --name-only --pretty=format: | sort | uniq -c | sort -rn`). Refactor those first.
+### 4. Drift from the deep-module shape
 
-**How to fix.** Split the function. Extract the inner `match` arms into named helpers. If lifetimes are tangled, often the underlying problem is a layer violation (a `domain` type holding a `&'_ infrastructure::Foo`); fix the dependency direction first.
+**Slop:** Modules acquiring "convenience" exports that paper over a missing abstraction. Implementation details leaking through the interface (returning the Drizzle row instead of the domain DTO). Routes reaching past a module to its private files.
 
-### 4. Architecture drift
+**How to detect.** `eslint-plugin-import` or Biome import rules can enforce "no relative imports past `index.ts`". Code review on PRs that touch `index.ts` of multiple modules — when one module's interface grows, ask: does the caller need the new export, or is the module the wrong shape?
 
-**Slop:** Divergence from the layered design — circular dependencies, `domain` reaching into `infrastructure`, "convenience" re-exports that paper over a missing abstraction.
+**How to fix.** Move the leaked behaviour behind the existing interface. If the interface can't absorb it cleanly, the module is mis-named — rename to what it actually does, *then* see whether the leakage was inevitable.
 
-**How to detect.**
-- **Compiler:** the workspace `Cargo.toml` `[dependencies]` table is the primary gate. Adding a forbidden dep makes `cargo build` fail.
-- **CI validator:** `scripts/layer-deps-validator.sh` (30 lines, ships in every project from `/code:start`) re-asserts the layer rule explicitly.
-- **Circular deps:** `cargo` already forbids them at the crate level. Within a crate, large modules can still cycle; if it gets bad, restructure into sub-crates.
+## The 5 slop categories — spotting it in review
 
-**How to fix.** Move the type to the inner layer. Introduce a port (trait) in `application` and implement it in `infrastructure`. Never collapse layers to "make it compile" — that's the slop.
-
-## The 5 slop categories (spotting it in review)
-
-When the CI gate is green but something still feels wrong, look for these patterns. The engineering plugin's `code-review` skill catches most; reviewers catch the rest.
+When CI is green but something still feels wrong, look for these. The engineering plugin's `code-review` skill catches most; reviewers catch the rest.
 
 | Category | Looks like | Fix |
 |---|---|---|
-| **Superficial Competence** | Code that follows common patterns but ignores the specific business rule. Example: a `validate_order` that checks for null and length but not the actual domain invariant. | Re-read the use case. Validation belongs in `application`, framed as "what makes this domain operation valid". |
-| **Unnecessary Complexity** | Manual loops, manual builders, hand-rolled state machines where a stdlib function exists. Example: a 12-line `for` loop building a `Vec<String>` that's just `.iter().map(...).collect()`. | Use the stdlib. If the stdlib doesn't fit, write a clear named helper, not an inline loop. |
-| **Defensive Over-Programming** | Excessive `Option`/`Result` plumbing for inputs already validated upstream. Example: an internal `application` use case re-validating fields the `interface` parsed with serde. | Trust internal callers. Validate at boundaries (interface → application), not between trusted modules. Pre-conditions in types: if `User` exists, its fields are valid. |
-| **Mirror Tests** | Tests that replay the implementation. Example: `#[test] fn test_add() { assert_eq!(add(2,3), 2 + 3); }`. The test asserts what the implementation will compute, not what callers expect. | Tests assert observable behaviour: inputs at the public API, outputs at the public API. If a test passes for two different correct implementations, it's a real test. |
-| **Inconsistent Styling** | Inline styles in dioxus components instead of class names, comments restating the obvious (`// Call stop` before `stop()`), naming that drifts (`user_id` here, `userId` there). | `rustfmt --check`, `clippy::doc_markdown`, project-wide naming convention enforced by review. |
+| **Superficial Competence** | Code follows common patterns but ignores the specific business rule. Example: a `validateOrder` that checks for null and length but not the actual domain invariant. | Re-read the use case. Validation belongs at the seam, framed as "what makes this operation valid in *this* domain". |
+| **Unnecessary Complexity** | Hand-rolled loops, hand-rolled state machines where stdlib or a small lib exists. 12-line `for` loop building an array that's `.map(...)` + `.filter(...)`. | Use the language. If stdlib doesn't fit, a named helper, not inline. |
+| **Defensive Over-Programming** | Internal modules re-validating fields the seam already parsed with Zod. | Validate at the seam, not between trusted modules. Types carry the post-condition. |
+| **Mirror Tests** | Tests replay the implementation. `expect(add(2, 3)).toBe(2 + 3)`. The test asserts what the implementation will compute, not what callers expect. | Tests assert observable behaviour through the public interface. A test that passes for two different correct implementations is a real test. |
+| **Inconsistent Styling** | Mixed quote styles, mixed `===` / `==`, naming drift (`userId` here, `user_id` there), comments restating the obvious. | `biome check --apply`. Project-wide naming enforced in review. |
 
-## The 4-stage verification loop (what the CI gate runs)
+## The 4-stage verification loop — what CI runs
 
-The `.github/workflows/code-et-audit.yml` workflow shipped by `/code:start` and `/code:install-ci` runs these stages on every PR. The same pipeline runs locally via `just audit` (in scaffolded projects) and as the tail step of `/code:ship`.
+The `.github/workflows/code-et-audit.yml` shipped by `/code:start` and `/code:install-ci` runs these stages on every PR. The same pipeline runs locally via `bun run audit` and as the tail step of `/code:ship`.
 
 | Stage | What | Tool |
 |---|---|---|
-| 1 — Static validation | Format, dead code, dead exports | `cargo fmt --check`, `cargo clippy -D warnings -W dead_code -W unreachable_pub`. Optional: `cargo +nightly udeps`. |
-| 2 — Architectural check | Layer-direction enforcement | `scripts/layer-deps-validator.sh` (defence-in-depth; the `cargo` build is the primary). |
-| 3 — Dependency audit | Unused + vulnerable + license/source bans | `cargo machete`, `cargo audit`, `cargo deny check`. |
-| 4 — Complexity & duplication | Cognitive complexity, Rule of Three duplication | `cargo clippy` with `clippy.toml` thresholds. Optional: `jscpd` for explicit duplication detection. |
+| 1 — Static validation | Format, lint, dead exports | `biome check .` |
+| 2 — Type safety | TypeScript checks across the workspace | `tsc --noEmit` |
+| 3 — Dependency audit | Vulnerable + unused deps | `bun audit`. Optional: `npx knip` for unused exports/files. |
+| 4 — Tests | Unit + integration | `bun test` |
 
 A finding is **CRITICAL** if it falls into one of:
-- Layer violation (stage 2)
-- Known security advisory in a dependency (stage 3 — `cargo audit`)
-- Rule-of-Three duplication group (stage 4)
-- Cognitive complexity above the deny threshold (stage 4)
+- Type error (stage 2)
+- Known security advisory in a dependency (stage 3 — `bun audit`)
+- Test failure (stage 4)
 
-The CI workflow exits non-zero on any CRITICAL finding. Other findings are warnings and don't block merge but are reviewed.
+CI exits non-zero on any CRITICAL finding. **HIGH** findings (Biome errors, type warnings escalated to errors) also block merge. MEDIUM/LOW (Biome warnings, unused exports from `knip`) are reviewed but don't block.
 
 ## Hard rules
 
-These are non-negotiable — they end up in `code-et-implementer/CLAUDE.md` so they apply to every plan, every implementation, every review.
+These are non-negotiable — they live in `code-et-implementer/CLAUDE.md` so they apply to every plan, every implementation, every review.
 
-1. **Rule of Three.** Third duplicate triggers a refactor in the same PR.
-2. **No mirror tests.** Tests assert observable behaviour, not implementation calls.
-3. **No defensive validation at trusted boundaries.** Validate at interface→application; trust internal calls.
-4. **No `// TODO: remove old X`.** When a slice supersedes existing code, deletion is part of the same commit.
-5. **No re-exports for convenience.** A re-export is documentation that a type belongs to two modules; if that's not what you meant, refactor.
-6. **Cognitive complexity ceiling: 15.** Override only with `#[allow(clippy::cognitive_complexity)]` + a one-line justification comment.
+1. **Deletion test before extraction.** Before extracting a helper into its own module, mentally delete it. If complexity vanishes, don't extract — inline it. Extract only when the deletion test says complexity would reappear across N callers.
+2. **Rule of Three.** Third duplicate triggers a refactor in the same PR.
+3. **No mirror tests.** Tests assert observable behaviour, not implementation calls. See [`testing.md`](testing.md) §"Mirror-test ban".
+4. **No defensive validation at trusted seams.** Validate at HTTP/queue/file seams (with Zod). Trust internal calls.
+5. **No `// TODO: remove old X`.** When a new module supersedes existing code, deletion is part of the same commit. New code obsoletes old in one step.
+6. **No re-exports for convenience.** A re-export is documentation that a type belongs to two modules. If that's not what you meant, refactor.
+7. **One adapter = hypothetical seam. Two adapters = real seam.** Don't introduce a port unless something actually varies across it.
+8. **Trust the types.** Don't sprinkle runtime `if (!foo) throw` for fields the type system already proves non-null. Validate at the seam, then trust.
 
 ## See also
 
-- [`docs/architecture.md`](architecture.md) — Rust Clean Architecture (the structural target the anti-slop rules defend).
-- [`docs/testing.md`](testing.md) — per-layer test matrix; the mirror-test ban is enforced there.
-- Engineering plugin's `tech-debt` skill — for prioritising slop fixes via Impact × Risk × Effort.
-- Engineering plugin's `code-review` skill — for the human-judgment pass after the CI gate.
+- [`architecture.md`](architecture.md) — deep-modules architecture; dependency categories; the seam vocabulary anti-slop defends.
+- [`testing.md`](testing.md) — interface-as-test-surface; mirror-test ban examples.
+- Engineering plugin's `tech-debt` skill — prioritising slop fixes via Impact × Risk × Effort.
+- Engineering plugin's `code-review` skill — the human-judgment pass after CI.

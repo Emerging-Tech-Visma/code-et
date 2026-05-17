@@ -1,36 +1,59 @@
 ---
 tools: Read, Bash, Glob
-description: "Copy code-et's CI audit workflow + layer-deps validator into an existing Rust repo."
+description: "Copy code-et's CI audit workflow into an existing TypeScript / Bun repo."
 argument-hint: "[--force]"
-effort: high
+effort: medium
 ---
 
-Install code-et's CI audit gate (`.github/workflows/code-et-audit.yml` + `scripts/layer-deps-validator.sh`) into the current Rust project. Idempotent — re-running overwrites only with `--force`.
+# Install CI — Drop the audit workflow into an existing repo
+
+Adds `.github/workflows/code-et-audit.yml` and an `audit` script entry (if `package.json` is missing one). Idempotent — re-running overwrites only with `--force`.
+
+The audit runs `biome check`, `tsc --noEmit`, `bun audit`, `bun test`. See [`docs/anti-slop.md`](../docs/anti-slop.md) §"4-stage verification loop".
 
 ## Procedure
 
 1. **Pre-flight.**
-   ```
-   Bash('test -f Cargo.toml && echo OK || echo "Not a Rust project (no Cargo.toml)"')
-   ```
-   If not Rust, stop.
 
-2. **Detect existing CI.**
+   ```
+   Bash('test -f package.json && echo OK || echo "Not a TS/Node project (no package.json)"')
+   ```
+
+   If not a TS project, stop with: *"This is for TypeScript / Bun projects. For a Rust project, install code-et v4.x."*
+
+2. **Detect existing workflow.**
+
    ```
    Bash('test -f .github/workflows/code-et-audit.yml && echo EXISTS || echo MISSING')
    ```
+
    If `EXISTS` and not `--force`, stop with: *"`.github/workflows/code-et-audit.yml` already present. Re-run with `--force` to overwrite."*
 
-3. **Copy workflow + validator.**
+3. **Copy workflow.**
+
    ```
-   Bash('mkdir -p .github/workflows scripts && cp "${CLAUDE_PLUGIN_ROOT}/templates/shared/.github/workflows/code-et-audit.yml" .github/workflows/ && cp "${CLAUDE_PLUGIN_ROOT}/templates/shared/scripts/layer-deps-validator.sh" scripts/ && chmod +x scripts/layer-deps-validator.sh')
+   Bash('mkdir -p .github/workflows && cp "${CLAUDE_PLUGIN_ROOT}/templates/shared/.github/workflows/code-et-audit.yml" .github/workflows/')
    ```
 
-4. **Recommend doctrine adoption.** Print a one-line note pointing the user at `code-et-implementer/docs/architecture.md` if their project doesn't yet have a 4-crate workspace. The validator is a no-op on projects without `crates/<layer>/` dirs — exits 0 with `"layer-deps-validator: clean"`.
+4. **Add an `audit` npm script** if `package.json` doesn't have one. Read `package.json`, add to `scripts`:
 
-5. **Recommend tool installs.** Print:
+   ```json
+   "audit": "biome check . && tsc --noEmit && bun audit --audit-level=high && bun test"
    ```
-   cargo install --locked cargo-machete cargo-audit cargo-deny cargo-nextest
+
+   Skip if the project already defines `audit` differently — print a note instead.
+
+5. **Recommend doctrine adoption.** Print:
+
+   ```
+   The audit assumes deep-modules architecture (no fixed layers).
+   See ${CLAUDE_PLUGIN_ROOT}/docs/architecture.md for the vocabulary.
+   ```
+
+6. **Recommend dev-dep installs** if missing:
+
+   ```
+   bun add -d @biomejs/biome typescript
    ```
 
 ## Output
