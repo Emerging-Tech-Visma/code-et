@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+
+# SQLite local dev databases
+dev.db
+dev.db-*
+*.sqlite
+*.sqlite-*
+
+# Build outputs
+.cache/
+.bun/
+
+# Audit reports
+.claude/audit-*.md

@@ -1,9 +1,0 @@
-[application]
-name = "{{name}}"
-
-[web.app]
-title = "{{name}}"
-
-[web.watcher]
-reload_html = true
-watch_path = ["crates/interface/src", "apps/web/src"]
